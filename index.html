@@ -69,6 +69,8 @@
         .bp2-serif { font-family: "Playfair Display", "Noto Serif TC", serif; }
         .bp2-sans { font-family: "Noto Sans TC", sans-serif; }
 
+        #app .todo-item:last-child { border-bottom-color: #F1F5F9; }
+
         /* 現在時間紅點 */
         @keyframes now-pulse { 0% { box-shadow: 0 0 0 0 rgba(158,14,38,.45); } 70% { box-shadow: 0 0 0 6px rgba(158,14,38,0); } 100% { box-shadow: 0 0 0 0 rgba(158,14,38,0); } }
         .now-pulse { animation: now-pulse 2s infinite; }
@@ -126,13 +128,7 @@
         .leaflet-custom-marker { background: none; border: none; }
         .leaflet-marker-icon { background: none; border: none; }
     </style>
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('sw.js').catch(() => {});
-        });
-      }
-    </script>
+    <style id="theme-style"></style>
 </head>
 <body>
     <div id="app"></div>
@@ -317,7 +313,7 @@
                     </button>
                 </header>
 
-                <main id="main-scroll" class="flex-1 overflow-y-auto overflow-x-hidden hide-scrollbar pt-[76px] pb-24 relative bg-[#F4F6F8]">
+                <main id="main-scroll" class="flex-1 overflow-y-auto overflow-x-hidden hide-scrollbar pt-[76px] relative bg-[#F4F6F8]" style="padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));">
                     
                     <!-- Tab 1: 行程 (Itinerary) -->
                     <div v-show="currentTab === 'itinerary'" class="animate-fade-in relative min-h-full">
@@ -357,8 +353,8 @@
                             </div>
 
                             <!-- 完美時間軸佈局 (支援拖曳排序) -->
-                            <div class="px-4 pb-10">
-                                <div class="flex justify-between items-center mb-4 pl-16">
+                            <div class="px-3 pb-10">
+                                <div class="flex justify-between items-center mb-4 pl-[50px]">
                                     <span class="text-xs font-bold text-slate-400"><i class="fa-solid fa-hand-pointer mr-1"></i> 長按卡片即可拖曳排序</span>
                                     <div class="flex items-center gap-1.5">
                                         <button type="button" v-if="hasCustomOrder(activeDay)" @click="autoSortCurrentDay" class="text-[10px] font-bold text-brand bg-slate-50 px-2 py-1 rounded border border-slate-200 shadow-sm active:scale-95 flex items-center">
@@ -372,54 +368,52 @@
                                 
                                 <div v-if="itinerary[activeDay].spots.length > 0" class="relative">
                                     <!-- 獨立的引導線 -->
-                                    <div class="absolute top-2 bottom-0 left-[66px] w-[2px] bg-slate-200 z-0"></div>
+                                    <div class="absolute top-2 bottom-0 left-[49px] w-[2px] bg-slate-200 z-0"></div>
                                     
                                     <div :id="'sortable-list-' + activeDay" class="flex flex-col gap-6 relative z-10" :class="{ 'spot-list-dragging': isDraggingSpot }">
                                         <div v-for="(spot, index) in itinerary[activeDay].spots" :key="spot.id" :data-id="spot.id" class="relative flex items-start group spot-item">
                                             
                                             <!-- 左側：獨立的時間文字區塊 -->
-                                            <div class="w-[54px] shrink-0 pt-1 flex flex-col items-end pr-2 pointer-events-none">
-                                                <span class="text-[14px] font-bold text-slate-800 font-sans tracking-tight leading-none mb-1">
+                                            <div class="w-[42px] shrink-0 pt-1 flex flex-col items-end pointer-events-none">
+                                                <span class="text-[13px] font-bold text-slate-800 font-sans tracking-tight leading-none mb-1 whitespace-nowrap">
                                                     {{ getTimelineMainText(spot) }}
                                                 </span>
-                                                <span v-if="getDurationDisplay(spot)" class="text-[9.5px] font-bold text-slate-400 font-sans text-right leading-tight mt-1">
+                                                <span v-if="getDurationDisplay(spot)" class="text-[9px] font-bold text-slate-400 font-sans text-right leading-tight mt-1">
                                                     {{ getDurationDisplay(spot) }}
                                                 </span>
                                             </div>
 
                                             <!-- 中間：圓點 (對齊引導線) -->
-                                            <div class="absolute left-[66px] top-1.5 z-10 w-0.5 h-0.5 flex justify-center items-center pointer-events-none">
+                                            <div class="absolute left-[49px] top-1.5 z-10 w-0.5 h-0.5 flex justify-center items-center pointer-events-none">
                                                 <div class="w-3 h-3 rounded-full border-2 border-white shadow-sm ring-1 ring-slate-100 absolute shrink-0" :style="{ backgroundColor: getSpotColor(spot.type) }"></div>
                                             </div>
                                             
                                             <!-- 右側：行程卡片 -->
                                             <div @click="handleCardClick(index, $event)" 
-                                                 class="bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-slate-100 border-l-[4px] ml-[24px] flex-1 relative overflow-hidden cursor-pointer transition-[transform,box-shadow] duration-150 select-none draggable-card"
+                                                 class="bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-slate-100 border-l-[3px] ml-[18px] flex-1 relative overflow-hidden cursor-pointer transition-[transform,box-shadow] duration-150 select-none draggable-card"
                                                  :style="{ borderLeftColor: getSpotColor(spot.type) }">
                                                 
-                                                <div class="flex items-start mt-0.5 mb-2">
-                                                    <span class="shrink-0 px-2 py-1 rounded-[6px] text-xs font-bold border mr-2 leading-none text-white shadow-sm"
-                                                          :style="{ backgroundColor: getSpotColor(spot.type), borderColor: getSpotColor(spot.type) }">
-                                                        {{ getSpotTypeName(spot.type) }}
-                                                    </span>
-                                                    <h3 class="font-bold text-slate-800 text-[16px] sm:text-[17px] leading-tight pt-[1px]">{{ spot.name }}</h3>
+                                                <!-- 封面照片（放在卡片最上方） -->
+                                                <div v-if="spot.coverImage" class="-mx-3 -mt-3 sm:-mx-4 sm:-mt-4 mb-3 relative h-36 overflow-hidden">
+                                                    <img :src="spot.coverImage" :style="{ objectPosition: '50% ' + getCoverPos(spot) + '%' }" class="w-full h-full object-cover">
+                                                    <div v-if="spot.photoSpotDesc" class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent px-3 pb-2 pt-6 text-white text-[10px] font-bold flex items-start">
+                                                        <i class="fa-solid fa-camera mr-1.5 mt-0.5 opacity-80"></i><span class="leading-relaxed line-clamp-2">{{ getPhotoDescForCover(spot) || spot.photoSpotDesc }}</span>
+                                                    </div>
                                                 </div>
 
-                                                <!-- 地址、營業時間與花費精緻化 -->
-                                                <div class="text-[11px] text-slate-500 font-bold space-y-1.5 mb-2 mt-1">
-                                                    <div v-if="spot.location && spot.type !== 'transit'" class="flex items-start">
-                                                        <i class="fa-solid fa-location-dot w-3.5 mt-0.5 shrink-0 text-slate-400"></i>
-                                                        <span class="leading-tight truncate">{{ spot.location }}</span>
-                                                    </div>
-                                                    <div v-if="spot.hours && spot.type !== 'hotel' && spot.type !== 'transit'" class="flex items-start">
-                                                        <i class="fa-regular fa-clock w-3.5 mt-0.5 shrink-0 text-slate-400"></i>
-                                                        <span class="font-sans leading-tight">{{ spot.hours }}</span>
-                                                    </div>
-                                                    <div v-if="spot.cost && spot.cost > 0" class="flex items-start">
-                                                        <i class="fa-solid fa-coins w-3.5 mt-0.5 shrink-0 text-brand"></i>
-                                                        <span class="leading-tight">預估花費：<span class="font-sans text-slate-700">{{ spot.currency === 'JPY' ? 'JPY ¥' : 'NTD $' }} {{ formatCurrency(spot.cost) }}</span></span>
-                                                    </div>
+                                                <!-- 類別＋標題 -->
+                                                <div class="mb-1">
+                                                    <span class="inline-block px-1.5 py-[3px] rounded-[5px] text-[10px] font-bold leading-none tracking-wide" :style="typeChipStyle(spot.type)">{{ getSpotTypeName(spot.type) }}</span>
                                                 </div>
+                                                <h3 class="font-bold text-slate-800 text-[16px] leading-snug">{{ spot.name }}</h3>
+
+                                                <!-- 地點・時間・花費（一行精簡） -->
+                                                <div v-if="(spot.location && spot.type !== 'transit') || (spot.hours && spot.type !== 'hotel' && spot.type !== 'transit') || (spot.cost && spot.cost > 0)" class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 mb-1 text-[11px] font-bold text-slate-500">
+                                                    <span v-if="spot.location && spot.type !== 'transit'" class="inline-flex items-center min-w-0 max-w-full"><i class="fa-solid fa-location-dot text-[10px] text-slate-300 mr-1"></i><span class="truncate">{{ spot.location }}</span></span>
+                                                    <span v-if="spot.hours && spot.type !== 'hotel' && spot.type !== 'transit'" class="inline-flex items-center font-sans"><i class="fa-regular fa-clock text-[10px] text-slate-300 mr-1"></i>{{ spot.hours }}</span>
+                                                    <span v-if="spot.cost && spot.cost > 0" class="inline-flex items-center font-sans"><i class="fa-solid fa-wallet text-[10px] text-slate-300 mr-1"></i><span class="text-slate-600">{{ costMain(spot) }}</span><span v-if="costSub(spot)" class="text-slate-400 ml-1 font-normal">{{ costSub(spot) }}</span></span>
+                                                </div>
+                                                <div class="h-1"></div>
 
                                                 <!-- 航班（精簡版） -->
                                                 <div v-if="spot.type === 'transit' && spot.transitMethod === '飛機' && (spot.depAirport || spot.arrAirport)" class="mb-2 mt-1 flex items-center text-[12px] font-bold text-slate-700">
@@ -464,21 +458,32 @@
                                                     </div>
                                                 </div>
 
-                                                <!-- 智慧 Tag (白底/透明底，彩色邊框與文字) -->
-                                                <div v-if="spot.tags && spot.tags.length > 0" class="flex flex-col gap-1 mb-2 mt-2">
-                                                    <div v-for="(group, type) in getGroupedTags(spot.tags)" :key="type" class="text-[10px] font-bold">
-                                                        <span class="px-1.5 py-0.5 rounded-[4px] border bg-transparent mr-1.5 inline-block" :style="{ color: getTagColor(type), borderColor: getTagColor(type) }">{{ type }}</span>
-                                                        <span class="text-slate-600 leading-snug">{{ group.join('、') }}</span>
-                                                    </div>
-                                                </div>
-
-                                                <div v-if="spot.warning" class="inline-flex items-start border border-[#9E0E26]/30 bg-[#9E0E26]/5 text-[#9E0E26] px-2 py-1.5 rounded-md mb-2 text-[11px] font-bold mt-1 w-full">
+                                                <div v-if="spot.warning" class="flex items-start bg-[#9E0E26]/5 text-[#9E0E26] px-2 py-1.5 rounded-md mb-1.5 text-[11px] font-bold mt-1.5 w-full">
                                                     <i class="fa-solid fa-triangle-exclamation mt-0.5 mr-1.5 opacity-80"></i>
                                                     <span class="leading-snug">{{ spot.warning }}</span>
                                                 </div>
                                                 
                                                 <!-- 一般筆記 (保留換行，最多3行) -->
-                                                <div v-if="spot.desc" class="text-[12px] text-slate-600 leading-relaxed mt-1 mb-2 line-clamp-3 whitespace-pre-line">{{ spot.desc }}</div>
+                                                <div v-if="spot.desc" class="text-[12px] text-slate-500 leading-relaxed mt-1.5 mb-1 line-clamp-2 whitespace-pre-line">{{ spot.desc }}</div>
+                                                <!-- 清單：必吃・必買・必拍・必做（卡片上直接勾） -->
+                                                <div v-if="spot.checklist && spot.checklist.length" class="mt-2 mb-1.5 rounded-lg bg-slate-50 border border-slate-100 px-2.5 pt-1.5 pb-1">
+                                                    <div class="flex items-center justify-between text-[10px] font-bold text-slate-400 mb-0.5">
+                                                        <span>清單 <span class="font-sans">{{ spot.checklist.filter(x => x.done).length }}/{{ spot.checklist.length }}</span></span>
+                                                        <span v-if="checklistTotal(spot)" class="font-sans">約 ¥{{ checklistTotal(spot).toLocaleString() }}</span>
+                                                    </div>
+                                                    <div v-for="(it, ci) in sortedChecklist(spot).filter(x => !x.done).slice(0, 4)" :key="'cc'+ci+(it.text||'')" @click.stop="it.done = !it.done" class="flex items-center py-[4px] cursor-pointer">
+                                                        <span class="w-4 h-4 rounded-full border-[1.5px] flex items-center justify-center shrink-0 mr-2 transition-colors" :style="it.done ? { backgroundColor: kindColor(it.kind), borderColor: kindColor(it.kind) } : { borderColor: '#CBD5E1', backgroundColor: '#fff' }">
+                                                            <i v-if="it.done" class="fa-solid fa-check text-white text-[7px]"></i>
+                                                        </span>
+                                                        <span class="text-[9px] font-bold px-1 py-[2px] rounded mr-1.5 shrink-0 leading-none" :style="kindChipStyle(it.kind)">{{ it.kind }}</span>
+                                                        <span class="text-[12px] font-bold flex-1 min-w-0 truncate" :class="it.done ? 'text-slate-300 line-through' : 'text-slate-700'">{{ it.text || '未命名' }}</span>
+                                                        <span v-if="it.brand" class="text-[9px] font-bold text-slate-400 ml-1.5 shrink-0">{{ it.brand }}</span>
+                                                        <span v-if="it.price" class="text-[11px] font-bold text-slate-400 font-sans ml-1.5 shrink-0">¥{{ Number(String(it.price).replace(/[^\d.]/g, '') || 0).toLocaleString() }}</span>
+                                                    </div>
+                                                    <p v-if="spot.checklist.filter(x => !x.done).length > 4" class="text-[10px] font-bold text-slate-400 pl-6 pb-0.5">還有 {{ spot.checklist.filter(x => !x.done).length - 4 }} 項，點開看全部</p>
+                                                    <p v-if="spot.checklist.every(x => x.done)" class="text-[11px] font-bold py-1 flex items-center" :style="{ color: currentTheme.text }"><i class="fa-solid fa-circle-check mr-1.5"></i>全部完成！</p>
+                                                </div>
+
                                                 <!-- 外部連結與附件 -->
                                                 <div v-if="(spot.links && spot.links.length) || (spot.files && spot.files.length)" class="flex flex-wrap gap-1.5 mt-2 mb-1">
                                                     <a v-for="(link, lk) in spot.links" :key="'lk'+lk" :href="link.url" target="_blank" rel="noopener" @click.stop
@@ -491,16 +496,6 @@
                                                     </button>
                                                 </div>
                                                 
-                                                <!-- 照片預覽區 -->
-                                                <div v-if="spot.coverImage" class="mt-3 w-full rounded-lg overflow-hidden relative border border-slate-100">
-                                                    <img :src="spot.coverImage" :style="{ objectPosition: '50% ' + getCoverPos(spot) + '%' }" class="w-full h-32 object-cover">
-                                                    <div v-if="spot.photoSpotDesc" class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-2.5 pt-6 text-white text-[10px] font-bold flex items-start">
-                                                        <i class="fa-solid fa-camera mr-1.5 mt-0.5 opacity-80"></i> <span class="leading-relaxed line-clamp-2">{{ getPhotoDescForCover(spot) || spot.photoSpotDesc }}</span>
-                                                    </div>
-                                                </div>
-                                                <div v-else-if="spot.photoSpotDesc" class="mt-2 text-[11px] text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100 flex items-start font-bold">
-                                                    <i class="fa-solid fa-camera mr-1.5 mt-0.5 text-slate-400"></i> <span class="leading-relaxed">{{ spot.photoSpotDesc }}</span>
-                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -523,35 +518,35 @@
                                 <p class="text-[11px] font-bold text-slate-400 mt-0.5" v-if="todoTotals.total">已完成 <span class="text-slate-700 font-sans">{{ todoTotals.done }}</span> / <span class="font-sans">{{ todoTotals.total }}</span> 項</p>
                             </div>
                             <div class="flex items-center gap-2">
-                                <button type="button" v-if="todoTotals.total" @click="hideDoneTodos = !hideDoneTodos" class="h-8 px-2.5 rounded-full text-[11px] font-bold border transition-colors"
-                                        :class="hideDoneTodos ? 'bg-[#EAF3F9] border-[#9CC3DD] text-[#1A5F8A]' : 'bg-white border-slate-200 text-slate-500'">
+                                <button type="button" v-if="todoTotals.total" @click="hideDoneTodos = !hideDoneTodos" class="h-8 px-2.5 rounded-full text-[11px] font-bold border transition-colors bg-white"
+                                        :style="hideDoneTodos ? { borderColor: currentTheme.line, color: currentTheme.text, backgroundColor: currentTheme.soft } : { borderColor: '#E2E8F0', color: '#64748B' }">
                                     <i class="fa-solid mr-1" :class="hideDoneTodos ? 'fa-eye-slash' : 'fa-eye'"></i>{{ hideDoneTodos ? '已隱藏完成' : '隱藏已完成' }}
                                 </button>
-                                <button type="button" @click="showAddCategoryModal = true" class="w-8 h-8 bg-[#1E4E79] text-white rounded-full flex items-center justify-center shadow-sm active:scale-95 transition-transform shrink-0">
+                                <button type="button" @click="showAddCategoryModal = true" class="w-8 h-8 text-white rounded-full flex items-center justify-center shadow-sm active:scale-95 transition-transform shrink-0" :style="{ backgroundColor: currentTheme.accent, color: currentTheme.onAccent }">
                                     <i class="fa-solid fa-plus text-sm"></i>
                                 </button>
                             </div>
                         </div>
                         <div v-if="todoTotals.total" class="h-1.5 bg-slate-200/70 rounded-full overflow-hidden mb-5 mx-1">
-                            <div class="h-full bg-[#3F7FB0] rounded-full transition-all duration-500" :style="{ width: (todoTotals.done / todoTotals.total * 100) + '%' }"></div>
+                            <div class="h-full rounded-full transition-all duration-500" :style="{ width: (todoTotals.done / todoTotals.total * 100) + '%', backgroundColor: currentTheme.accent }"></div>
                         </div>
 
                         <!-- 清單 -->
-                        <div class="space-y-3">
+                        <div class="space-y-4">
                             <div v-for="(cat, cIdx) in todoCategories" :key="cat.id" class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                                <!-- 清單標題列 -->
-                                <div class="flex items-center px-4 pt-3.5 pb-3">
-                                    <button type="button" @click.stop="openIconPicker(cIdx)" class="w-9 h-9 rounded-xl bg-[#EAF3F9] text-[#1E4E79] flex items-center justify-center mr-3 shrink-0 active:scale-95">
-                                        <i :class="cat.icon" class="text-sm"></i>
+                                <!-- 大清單標題 -->
+                                <div class="flex items-center px-4 pt-4 pb-3">
+                                    <button type="button" @click.stop="openIconPicker(cIdx)" class="w-10 h-10 rounded-xl flex items-center justify-center mr-3 shrink-0 active:scale-95" :style="{ backgroundColor: currentTheme.soft, color: currentTheme.text }">
+                                        <i :class="cat.icon" class="text-[15px]"></i>
                                     </button>
                                     <div class="flex-1 min-w-0">
-                                        <input type="text" v-model="cat.name" class="inline-edit-input text-[15px] font-bold text-slate-800 w-full truncate" placeholder="清單名稱...">
-                                        <div class="flex items-center mt-1">
-                                            <div class="flex-1 h-1 bg-slate-100 rounded-full overflow-hidden mr-2 max-w-[120px]">
-                                                <div class="h-full rounded-full transition-all duration-500" :class="catProgress(cat).total && catProgress(cat).done === catProgress(cat).total ? 'bg-[#1E4E79]' : 'bg-[#6E99B5]'" :style="{ width: (catProgress(cat).total ? catProgress(cat).done / catProgress(cat).total * 100 : 0) + '%' }"></div>
+                                        <input type="text" v-model="cat.name" class="inline-edit-input text-[16px] font-bold text-slate-800 w-full truncate" placeholder="清單名稱...">
+                                        <div class="flex items-center mt-1.5">
+                                            <div class="flex-1 h-[5px] bg-slate-100 rounded-full overflow-hidden mr-2 max-w-[140px]">
+                                                <div class="h-full rounded-full transition-all duration-500" :style="{ width: (catProgress(cat).total ? catProgress(cat).done / catProgress(cat).total * 100 : 0) + '%', backgroundColor: currentTheme.accent }"></div>
                                             </div>
                                             <span class="text-[10px] font-bold text-slate-400 font-sans">{{ catProgress(cat).done }}/{{ catProgress(cat).total }}</span>
-                                            <i v-if="catProgress(cat).total && catProgress(cat).done === catProgress(cat).total" class="fa-solid fa-circle-check text-[10px] text-[#1E4E79] ml-1"></i>
+                                            <i v-if="catProgress(cat).total && catProgress(cat).done === catProgress(cat).total" class="fa-solid fa-circle-check text-[11px] ml-1" :style="{ color: currentTheme.text }"></i>
                                         </div>
                                     </div>
                                     <button type="button" @click="cat.collapsed = !cat.collapsed" class="w-8 h-8 rounded-full text-slate-400 flex items-center justify-center shrink-0 ml-1 active:bg-slate-100">
@@ -559,43 +554,43 @@
                                     </button>
                                 </div>
 
-                                <div v-show="!cat.collapsed" class="border-t border-slate-100">
-                                    <!-- 子清單 -->
-                                    <div v-for="(sub, sIdx) in (cat.subcategories || [])" :key="sub.id" class="px-4 pt-3 pb-1 border-b border-slate-50 last:border-b-0">
-                                        <div class="flex items-center mb-1">
-                                            <button type="button" @click.stop="openIconPicker(cIdx, sIdx)" class="w-5 h-5 rounded-md text-[#3F7FB0] flex items-center justify-center mr-1.5 shrink-0">
+                                <div v-show="!cat.collapsed" class="px-3 pb-3 space-y-2.5">
+                                    <!-- 子清單：各自一個區塊，邊界清楚 -->
+                                    <div v-for="(sub, sIdx) in (cat.subcategories || [])" :key="sub.id" class="rounded-xl overflow-hidden" :style="{ backgroundColor: currentTheme.soft }">
+                                        <div class="flex items-center px-3 pt-2.5 pb-2">
+                                            <button type="button" @click.stop="openIconPicker(cIdx, sIdx)" class="w-6 h-6 rounded-md bg-white flex items-center justify-center mr-2 shrink-0 shadow-sm" :style="{ color: currentTheme.text }">
                                                 <i :class="sub.icon || 'fas fa-list'" class="text-[10px]"></i>
                                             </button>
-                                            <input type="text" v-model="sub.name" class="inline-edit-input text-[11px] font-bold text-slate-500 tracking-wider flex-1 min-w-0 truncate" placeholder="子清單名稱...">
-                                            <span class="text-[10px] font-bold text-slate-300 font-sans mr-2">{{ (sub.items || []).filter(i => i.done).length }}/{{ (sub.items || []).length }}</span>
-                                            <button type="button" @click="removeSubcategory(cIdx, sIdx)" class="text-slate-300 hover:text-red-400 shrink-0 w-6 h-6 flex items-center justify-center"><i class="fa-solid fa-xmark text-[11px]"></i></button>
+                                            <input type="text" v-model="sub.name" class="inline-edit-input text-[13px] font-bold text-slate-700 flex-1 min-w-0 truncate" placeholder="子清單名稱...">
+                                            <span class="text-[10px] font-bold font-sans px-1.5 py-[2px] rounded-full bg-white mr-1.5 shrink-0" :style="{ color: currentTheme.text }">{{ (sub.items || []).filter(i => i.done).length }}/{{ (sub.items || []).length }}</span>
+                                            <button type="button" @click="removeSubcategory(cIdx, sIdx)" class="text-slate-400/70 hover:text-red-400 shrink-0 w-6 h-6 flex items-center justify-center"><i class="fa-solid fa-xmark text-[11px]"></i></button>
                                         </div>
-
-                                        <div :id="'todo-items-list-' + cIdx + '-' + sIdx" class="min-h-[4px]">
-                                            <div v-for="(item, iIdx) in sub.items" :key="item.id" v-show="!(hideDoneTodos && item.done)" class="todo-item flex items-center py-[7px] border-b border-slate-50 last:border-b-0">
-                                                <button type="button" @click="item.done = !item.done" class="w-[20px] h-[20px] rounded-full border-[1.5px] flex items-center justify-center shrink-0 mr-3 transition-all duration-200"
-                                                        :class="item.done ? 'bg-[#1E4E79] border-[#1E4E79]' : 'border-slate-300 bg-white'">
-                                                    <i v-if="item.done" class="fa-solid fa-check text-white text-[9px]"></i>
-                                                </button>
-                                                <input type="text" v-model="item.text" class="inline-edit-input text-[14px] min-w-0 flex-1 truncate transition-colors" :class="item.done ? 'text-slate-300 line-through' : 'text-slate-700'">
-                                                <button type="button" @click.stop="removeTodoItem(cIdx, sIdx, iIdx)" class="text-slate-200 hover:text-red-400 w-7 h-7 flex items-center justify-center shrink-0"><i class="fa-solid fa-xmark text-[11px]"></i></button>
-                                                <i class="fa-solid fa-grip-lines text-slate-200 item-drag-handle w-6 h-7 flex items-center justify-center shrink-0 cursor-grab text-[11px]"></i>
+                                        <div class="bg-white mx-1.5 mb-1.5 rounded-lg px-3">
+                                            <div :id="'todo-items-list-' + cIdx + '-' + sIdx">
+                                                <div v-for="(item, iIdx) in sub.items" :key="item.id" v-show="!(hideDoneTodos && item.done)" class="todo-item flex items-center py-2.5 border-b border-slate-100">
+                                                    <button type="button" @click="item.done = !item.done" class="w-[20px] h-[20px] rounded-full border-[1.5px] flex items-center justify-center shrink-0 mr-3 transition-all duration-200"
+                                                            :style="item.done ? { backgroundColor: currentTheme.accent, borderColor: currentTheme.accent } : { borderColor: '#CBD5E1', backgroundColor: '#fff' }">
+                                                        <i v-if="item.done" class="fa-solid fa-check text-[9px]" :style="{ color: currentTheme.onAccent }"></i>
+                                                    </button>
+                                                    <input type="text" v-model="item.text" class="inline-edit-input text-[14px] min-w-0 flex-1 truncate transition-colors" :class="item.done ? 'text-slate-300 line-through' : 'text-slate-700'">
+                                                    <button type="button" @click.stop="removeTodoItem(cIdx, sIdx, iIdx)" class="text-slate-200 hover:text-red-400 w-7 h-7 flex items-center justify-center shrink-0"><i class="fa-solid fa-xmark text-[11px]"></i></button>
+                                                    <i class="fa-solid fa-grip-lines text-slate-200 item-drag-handle w-5 h-7 flex items-center justify-center shrink-0 cursor-grab text-[11px]"></i>
+                                                </div>
                                             </div>
-                                        </div>
-
-                                        <!-- 新增項目 -->
-                                        <div class="flex items-center py-2">
-                                            <span class="w-[20px] h-[20px] rounded-full border-[1.5px] border-dashed border-slate-300 flex items-center justify-center shrink-0 mr-3 text-slate-300"><i class="fa-solid fa-plus text-[8px]"></i></span>
-                                            <input type="text" v-model="sub.newItemText" @keyup.enter="addTodoItem(cIdx, sIdx)" placeholder="新增項目" class="flex-1 min-w-0 bg-transparent text-[14px] outline-none placeholder:text-slate-300 text-slate-700">
-                                            <button v-if="sub.newItemText && sub.newItemText.trim()" type="button" @click.stop="addTodoItem(cIdx, sIdx)" class="text-[11px] font-bold text-white bg-[#1E4E79] px-2.5 py-1 rounded-full shrink-0 active:scale-95">加入</button>
+                                            <!-- 新增項目 -->
+                                            <div class="flex items-center py-2.5">
+                                                <span class="w-[20px] h-[20px] rounded-full border-[1.5px] border-dashed flex items-center justify-center shrink-0 mr-3" :style="{ borderColor: currentTheme.line, color: currentTheme.accent2 }"><i class="fa-solid fa-plus text-[8px]"></i></span>
+                                                <input type="text" v-model="sub.newItemText" @keyup.enter="addTodoItem(cIdx, sIdx)" placeholder="新增項目" class="flex-1 min-w-0 bg-transparent text-[14px] outline-none placeholder:text-slate-300 text-slate-700">
+                                                <button v-if="sub.newItemText && sub.newItemText.trim()" type="button" @click.stop="addTodoItem(cIdx, sIdx)" class="text-[11px] font-bold text-white px-2.5 py-1 rounded-full shrink-0 active:scale-95" :style="{ backgroundColor: currentTheme.accent, color: currentTheme.onAccent }">加入</button>
+                                            </div>
                                         </div>
                                     </div>
 
-                                    <div v-if="!cat.subcategories || cat.subcategories.length === 0" class="px-4 py-4 text-[12px] text-slate-400 text-center">還沒有子清單，按下方「新增子清單」開始</div>
+                                    <div v-if="!cat.subcategories || cat.subcategories.length === 0" class="rounded-xl border border-dashed border-slate-200 px-4 py-4 text-[12px] text-slate-400 text-center">還沒有子清單，按下方「新增子清單」開始</div>
 
                                     <!-- 清單操作 -->
-                                    <div class="flex items-center justify-between px-4 py-2.5 bg-slate-50/60 border-t border-slate-100">
-                                        <button type="button" @click="showAddSubcategoryModal(cIdx)" class="text-[11px] font-bold text-[#1A5F8A] active:opacity-60"><i class="fa-solid fa-plus mr-1"></i>新增子清單</button>
+                                    <div class="flex items-center justify-between px-1 pt-0.5">
+                                        <button type="button" @click="showAddSubcategoryModal(cIdx)" class="text-[11px] font-bold active:opacity-60" :style="{ color: currentTheme.text }"><i class="fa-solid fa-plus mr-1"></i>新增子清單</button>
                                         <button type="button" @click="removeTodoCategory(cIdx)" class="text-[11px] font-bold text-slate-400 hover:text-red-400 active:opacity-60"><i class="fa-regular fa-trash-can mr-1"></i>刪除清單</button>
                                     </div>
                                 </div>
@@ -603,7 +598,7 @@
                         </div>
 
                         <div v-if="todoCategories.length === 0" class="text-center py-14 text-slate-400">
-                            <div class="w-14 h-14 rounded-2xl bg-[#EAF3F9] text-[#3F7FB0] flex items-center justify-center mx-auto mb-3"><i class="fa-regular fa-square-check text-2xl"></i></div>
+                            <div class="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3" :style="{ backgroundColor: currentTheme.soft, color: currentTheme.accent2 }"><i class="fa-regular fa-square-check text-2xl"></i></div>
                             <p class="text-sm font-bold text-slate-500">還沒有任何清單</p>
                             <p class="text-xs mt-1">點右上角「＋」建立，例如「行李」「出發前」</p>
                         </div>
@@ -696,7 +691,7 @@
                                 <button type="button" v-for="p in mapStops" :key="'stop'+p.dayIdx+'-'+p.spotIdx" @click="openStopInGoogle(p)"
                                         class="w-full text-left flex items-center px-3 py-2.5 border-b border-slate-50 last:border-0 hover:bg-slate-50 active:bg-slate-100">
                                     <span class="w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center shrink-0 mr-2.5"
-                                          :style="p.status === 'exact' ? { backgroundColor: p.color, color: '#fff' } : { border: '1.5px dashed ' + p.color, color: p.color }">{{ p.num }}</span>
+                                          :style="p.status === 'exact' ? { backgroundColor: p.color, color: inkOn(p.color) } : { border: '1.5px dashed ' + p.color, color: inkOn(p.color) === '#fff' ? p.color : '#0077B6' }">{{ p.num }}</span>
                                     <span class="flex-1 min-w-0 text-[12px] font-bold text-slate-700 truncate">{{ p.name }}</span>
                                     <span class="text-[10px] font-bold px-1.5 py-[2px] rounded shrink-0 ml-2"
                                           :class="{ 'bg-[#EAF3F9] text-[#1A5F8A]': p.status === 'exact', 'bg-slate-100 text-slate-500': p.status === 'approx' || p.status === 'pending', 'bg-red-50 text-red-500': p.status === 'fail' }">
@@ -739,7 +734,7 @@
                                         <div class="flex-1 min-w-0 pl-1.5">
                                             <div class="rounded-xl border border-slate-100 bg-slate-50/70 px-3 py-2.5 group-hover:bg-slate-50 group-hover:border-slate-200 transition-colors">
                                                 <div class="flex items-center mb-1">
-                                                    <span class="text-[10px] font-bold text-white px-1.5 py-[2px] rounded leading-none mr-2 shrink-0" :style="{ backgroundColor: getDayColor(idx) }">{{ day.label }}</span>
+                                                    <span class="text-[10px] font-bold px-1.5 py-[2px] rounded leading-none mr-2 shrink-0" :style="{ backgroundColor: getDayColor(idx), color: relLumOf(getDayColor(idx)) > 0.5 ? onColor(getDayColor(idx)) : '#FFFFFF' }">{{ day.label }}</span>
                                                     
                                                     <span v-if="day.hero && day.hero.location" class="text-[10px] font-bold text-slate-400 truncate"><i class="fa-solid fa-location-dot mr-1"></i>{{ day.hero.location }}</span>
                                                     <span class="ml-auto text-[10px] font-bold text-slate-400 shrink-0 pl-2">{{ (day.spots || []).length }} 個行程</span>
@@ -750,9 +745,6 @@
                                                         <span class="w-[34px] shrink-0 font-sans" :class="isCurrentSpot(day, sp) ? 'text-[#9E0E26]' : 'text-slate-400'">{{ sp.startTime || sp.checkInTime || '' }}</span>
                                                         <span class="rounded-full mr-1.5 shrink-0" :class="isCurrentSpot(day, sp) ? 'w-2 h-2 now-pulse' : 'w-1.5 h-1.5'" :style="{ backgroundColor: isCurrentSpot(day, sp) ? '#9E0E26' : getSpotColor(sp.type) }"></span>
                                                         <span class="truncate" :class="isCurrentSpot(day, sp) ? 'text-[#9E0E26]' : 'text-slate-600'">{{ sp.name }}</span>
-                                                    </div>
-                                                    <div v-if="(day.spots || []).filter(x => x.type !== 'transit').length > 3" class="text-[10px] font-bold text-slate-400 pl-[34px]">
-                                                        還有 {{ (day.spots || []).filter(x => x.type !== 'transit').length - 3 }} 個地點
                                                     </div>
                                                 </div>
                                             </div>
@@ -774,12 +766,15 @@
                             </div>
                         </div>
 
-                        <!-- 📦 備份與匯出（精簡入口） -->
+                        <!-- ⚙️ 設定 -->
                         <button type="button" @click="showBackupModal = true" class="w-full bg-white rounded-2xl px-5 py-4 shadow-sm border border-slate-100 mb-8 flex items-center active:scale-[0.99] transition-transform">
-                            <span class="w-9 h-9 rounded-xl bg-[#EAF3F9] text-[#1E4E79] flex items-center justify-center mr-3 shrink-0"><i class="fa-solid fa-box-archive text-sm"></i></span>
+                            <span class="w-9 h-9 rounded-xl bg-[#EAF3F9] text-[#1E4E79] flex items-center justify-center mr-3 shrink-0"><i class="fa-solid fa-gear text-sm"></i></span>
                             <span class="flex-1 text-left">
-                                <span class="block text-[15px] font-bold text-slate-800">備份與匯出</span>
-                                <span class="block text-[11px] font-bold text-slate-400 mt-0.5">搬移裝置、匯出 Notion、時光膠囊</span>
+                                <span class="block text-[15px] font-bold text-slate-800">設定</span>
+                                <span class="block text-[11px] font-bold text-slate-400 mt-0.5">外觀主題・備份與匯出</span>
+                            </span>
+                            <span class="flex h-3 w-12 rounded-full overflow-hidden mr-2.5">
+                                <span v-for="(c, ci) in currentTheme.stops" :key="'hs'+ci" class="flex-1" :style="{ backgroundColor: c }"></span>
                             </span>
                             <i class="fa-solid fa-chevron-right text-xs text-slate-300"></i>
                         </button>
@@ -788,6 +783,38 @@
                     <!-- Tab 4: 獨立花費頁面 (Expenses) -->
                     <div v-show="currentTab === 'expense'" class="animate-fade-in space-y-4 px-4 pt-4 pb-12 min-h-full">
                         <h2 class="text-xl font-bold text-slate-800 mb-4 pl-1">花費與記帳</h2>
+
+                        <!-- 💱 即時匯率換算 -->
+                        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <p class="text-[14px] font-bold text-slate-800 flex items-center"><span class="w-7 h-7 rounded-lg bg-[#EAF3F9] text-[#1E4E79] flex items-center justify-center mr-2"><i class="fa-solid fa-yen-sign text-[11px]"></i></span>匯率換算</p>
+                                <button type="button" @click="fetchRate(true)" class="text-[10px] font-bold text-slate-400 flex items-center active:opacity-60">
+                                    <i class="fa-solid fa-rotate-right mr-1" :class="{ 'animate-spin': isRateLoading }"></i>{{ rateTimeLabel }}
+                                </button>
+                            </div>
+                            <div class="rounded-xl border border-slate-200 overflow-hidden">
+                                <label class="flex items-center px-3.5 py-2.5 cursor-text">
+                                    <span class="shrink-0 w-[62px]">
+                                        <span class="block text-[11px] font-bold text-slate-400">日幣</span>
+                                        <span class="block text-[13px] font-bold text-slate-700 font-sans">¥ JPY</span>
+                                    </span>
+                                    <input type="text" inputmode="decimal" :value="convJPY" @input="onConvInput('jpy', $event.target.value)" @focus="$event.target.select()" placeholder="0"
+                                           class="flex-1 min-w-0 text-right text-[24px] font-bold font-sans text-slate-900 bg-transparent outline-none placeholder:text-slate-300">
+                                </label>
+                                <div class="relative h-px bg-slate-100">
+                                    <span class="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white border border-slate-200 text-slate-400 flex items-center justify-center"><i class="fa-solid fa-arrows-up-down text-[10px]"></i></span>
+                                </div>
+                                <label class="flex items-center px-3.5 py-2.5 cursor-text bg-slate-50/60">
+                                    <span class="shrink-0 w-[62px]">
+                                        <span class="block text-[11px] font-bold text-slate-400">台幣</span>
+                                        <span class="block text-[13px] font-bold text-slate-700 font-sans">NT$ TWD</span>
+                                    </span>
+                                    <input type="text" inputmode="decimal" :value="convTWD" @input="onConvInput('twd', $event.target.value)" @focus="$event.target.select()" placeholder="0"
+                                           class="flex-1 min-w-0 text-right text-[24px] font-bold font-sans bg-transparent outline-none placeholder:text-slate-300" :style="{ color: currentTheme.vivid }">
+                                </label>
+                            </div>
+
+                        </div>
                         
                         <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 mb-6 relative overflow-hidden">
                             <div class="flex items-center justify-between mb-4 text-slate-700 relative z-10">
@@ -865,20 +892,20 @@
                 </main>
 
                 <!-- Bottom Navigation Bar -->
-                <nav class="glass-nav fixed bottom-0 w-full max-w-[430px] z-30 pb-safe pt-2 px-3 sm:px-6 flex justify-between items-center h-[72px] shadow-[0_-4px_20px_rgba(0,0,0,0.03)]">
-                    <button type="button" @click="currentTab = 'itinerary'" class="flex flex-col items-center justify-center w-16 h-full transition-colors" :class="currentTab === 'itinerary' ? 'text-slate-800' : 'text-slate-400'">
+                <nav class="glass-nav fixed bottom-0 w-full max-w-[430px] z-30 px-7 flex justify-between items-start shadow-[0_-4px_20px_rgba(0,0,0,0.03)]" style="padding-top: 12px; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 6px); min-height: calc(66px + env(safe-area-inset-bottom, 0px));">
+                    <button type="button" @click="currentTab = 'itinerary'" class="flex flex-col items-center justify-start w-16 pt-1 pb-1 transition-colors" :class="currentTab === 'itinerary' ? 'text-[#1e293b]' : 'text-slate-400'">
                         <i class="fa-solid fa-map-location-dot text-xl mb-1 transition-transform" :class="{'scale-110': currentTab === 'itinerary'}"></i>
                         <span class="text-[10px] font-bold">行程</span>
                     </button>
-                    <button type="button" @click="currentTab = 'todo'" class="flex flex-col items-center justify-center w-16 h-full transition-colors" :class="currentTab === 'todo' ? 'text-slate-800' : 'text-slate-400'">
+                    <button type="button" @click="currentTab = 'todo'" class="flex flex-col items-center justify-start w-16 pt-1 pb-1 transition-colors" :class="currentTab === 'todo' ? 'text-[#1e293b]' : 'text-slate-400'">
                         <i class="fa-regular fa-square-check text-xl mb-1 transition-transform" :class="{'scale-110': currentTab === 'todo'}"></i>
                         <span class="text-[10px] font-bold">待辦</span>
                     </button>
-                    <button type="button" @click="currentTab = 'expense'" class="flex flex-col items-center justify-center w-16 h-full transition-colors" :class="currentTab === 'expense' ? 'text-slate-800' : 'text-slate-400'">
+                    <button type="button" @click="currentTab = 'expense'" class="flex flex-col items-center justify-start w-16 pt-1 pb-1 transition-colors" :class="currentTab === 'expense' ? 'text-[#1e293b]' : 'text-slate-400'">
                         <i class="fa-solid fa-wallet text-xl mb-1 transition-transform" :class="{'scale-110': currentTab === 'expense'}"></i>
                         <span class="text-[10px] font-bold">花費</span>
                     </button>
-                    <button type="button" @click="currentTab = 'info'" class="flex flex-col items-center justify-center w-16 h-full transition-colors" :class="currentTab === 'info' ? 'text-slate-800' : 'text-slate-400'">
+                    <button type="button" @click="currentTab = 'info'" class="flex flex-col items-center justify-start w-16 pt-1 pb-1 transition-colors" :class="currentTab === 'info' ? 'text-[#1e293b]' : 'text-slate-400'">
                         <i class="fa-solid fa-folder-open text-xl mb-1 transition-transform" :class="{'scale-110': currentTab === 'info'}"></i>
                         <span class="text-[10px] font-bold">總覽</span>
                     </button>
@@ -1006,8 +1033,7 @@
                             <div class="p-4 space-y-4">
                                 <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
                                     <div v-if="selectedSpot.type === 'hotel'" class="flex items-center space-x-2 mb-4">
-                                        <span class="px-2 py-1 rounded-[6px] text-xs font-bold border shrink-0 text-white shadow-sm" 
-                                            :style="{ backgroundColor: getSpotColor(selectedSpot.type), borderColor: getSpotColor(selectedSpot.type) }">
+                                        <span class="px-2 py-1 rounded-[6px] text-[11px] font-bold shrink-0 leading-none" :style="typeChipStyle(selectedSpot.type)">
                                             {{ getSpotTypeName(selectedSpot.type) }}
                                         </span>
                                         <span class="text-slate-500 text-sm font-bold font-sans flex items-center min-w-0 truncate">
@@ -1017,8 +1043,7 @@
                                         </span>
                                     </div>
                                     <div v-else class="flex items-center space-x-2 mb-4">
-                                        <span class="px-2 py-1 rounded-[6px] text-xs font-bold border shrink-0 text-white shadow-sm" 
-                                            :style="{ backgroundColor: getSpotColor(selectedSpot.type), borderColor: getSpotColor(selectedSpot.type) }">
+                                        <span class="px-2 py-1 rounded-[6px] text-[11px] font-bold shrink-0 leading-none" :style="typeChipStyle(selectedSpot.type)">
                                             {{ getSpotTypeName(selectedSpot.type) }}
                                         </span>
                                         <span v-if="!(selectedSpot.type === 'transit' && selectedSpot.transitMethod === '飛機')" class="text-slate-500 text-sm font-bold font-sans flex items-center min-w-0 truncate">
@@ -1159,27 +1184,28 @@
                                         </div>
                                     </div>
 
-                                    <!-- 共用欄位：地址、營業時間與花費精緻化 (加強顯示) -->
-                                    <div v-if="selectedSpot.location" class="flex items-start mb-2.5 text-[11px] font-bold text-slate-600">
-                                        <i class="fa-solid fa-location-dot w-4 mt-0.5 text-center text-slate-400 shrink-0"></i>
-                                        <a v-if="selectedSpot.googleMapUrl" :href="getSpotMapHref(selectedSpot)" target="_blank" class="leading-snug pr-2 underline decoration-slate-300 underline-offset-2">{{ selectedSpot.location }}</a>
-                                        <span v-else class="leading-snug pr-2">{{ selectedSpot.location }}</span>
-                                    </div>
-                                    
-                                    <div v-if="selectedSpot.hours && selectedSpot.type !== 'hotel' && selectedSpot.type !== 'transit'" class="flex items-start mb-2.5 text-[11px] font-bold text-slate-600">
-                                        <i class="fa-regular fa-clock w-4 mt-0.5 text-center text-slate-400 shrink-0"></i>
-                                        <span class="font-sans">{{ selectedSpot.hours }}</span>
-                                    </div>
-                                    <div v-if="selectedSpot.cost && selectedSpot.cost > 0" class="flex flex-col pt-2 border-t border-slate-100 mt-2 text-[11px] font-bold text-slate-600 space-y-1.5">
-                                        <div class="flex items-center">
-                                            <i class="fa-solid fa-coins w-4 text-center text-brand shrink-0"></i>
-                                            <span class="mr-1">預估花費：</span>
-                                            <span class="font-sans text-slate-800">{{ selectedSpot.currency === 'JPY' ? 'JPY ¥' : 'NTD $' }} {{ formatCurrency(selectedSpot.cost) }}</span>
+                                    <!-- 地點・營業時間・花費 -->
+                                    <div v-if="selectedSpot.location || (selectedSpot.hours && selectedSpot.type !== 'hotel' && selectedSpot.type !== 'transit') || (selectedSpot.cost && selectedSpot.cost > 0)" class="rounded-xl border border-slate-100 divide-y divide-slate-100 mb-2">
+                                        <div v-if="selectedSpot.location" class="flex items-center px-3 py-2.5">
+                                            <i class="fa-solid fa-location-dot w-5 text-slate-300 text-[12px] shrink-0"></i>
+                                            <span class="flex-1 min-w-0 text-[13px] font-bold text-slate-700 leading-snug">{{ selectedSpot.location }}</span>
+                                            <a :href="getSpotMapHref(selectedSpot)" target="_blank" rel="noopener" @click.stop class="text-[11px] font-bold text-[#1A5F8A] bg-[#EAF3F9] rounded-full px-2.5 py-1 shrink-0 ml-2"><i class="fa-solid fa-map-location-dot mr-1"></i>地圖</a>
                                         </div>
-                                        <div class="flex items-center pl-4 text-[10px] text-slate-500 flex-wrap gap-1">
-                                            <span v-if="selectedSpot.costCategory" class="bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">🏷️ {{ selectedSpot.costCategory }}</span>
-                                            <span v-if="selectedSpot.payer" class="bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">👤 {{ selectedSpot.payer }}</span>
-                                            <span v-if="selectedSpot.paymentMethod" class="bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">💳 {{ selectedSpot.paymentMethod }}</span>
+                                        <div v-if="selectedSpot.hours && selectedSpot.type !== 'hotel' && selectedSpot.type !== 'transit'" class="flex items-center px-3 py-2.5">
+                                            <i class="fa-regular fa-clock w-5 text-slate-300 text-[12px] shrink-0"></i>
+                                            <span class="text-[13px] font-bold text-slate-700 font-sans">{{ selectedSpot.hours }}</span>
+                                        </div>
+                                        <div v-if="selectedSpot.cost && selectedSpot.cost > 0" class="px-3 py-2.5">
+                                            <div class="flex items-center">
+                                                <i class="fa-solid fa-wallet w-5 text-slate-300 text-[12px] shrink-0"></i>
+                                                <span class="text-[14px] font-bold text-slate-800 font-sans">{{ costMain(selectedSpot) }}</span>
+                                                <span v-if="costSub(selectedSpot)" class="text-[11px] font-bold text-slate-400 font-sans ml-1.5">{{ costSub(selectedSpot) }}</span>
+                                            </div>
+                                            <div class="flex flex-wrap gap-1 mt-1.5 pl-5">
+                                                <span v-if="selectedSpot.costCategory" class="text-[10px] font-bold text-slate-500 bg-slate-50 px-1.5 py-0.5 rounded">{{ selectedSpot.costCategory }}</span>
+                                                <span v-if="selectedSpot.payer" class="text-[10px] font-bold text-slate-500 bg-slate-50 px-1.5 py-0.5 rounded"><i class="fa-regular fa-user mr-0.5"></i>{{ selectedSpot.payer }}</span>
+                                                <span v-if="selectedSpot.paymentMethod" class="text-[10px] font-bold text-slate-500 bg-slate-50 px-1.5 py-0.5 rounded"><i class="fa-regular fa-credit-card mr-0.5"></i>{{ selectedSpot.paymentMethod }}</span>
+                                            </div>
                                         </div>
                                     </div>
 
@@ -1188,20 +1214,43 @@
                                         <span class="leading-snug">{{ selectedSpot.warning }}</span>
                                     </div>
 
-                                    <div v-if="selectedSpot.desc" class="bg-slate-50 rounded-xl p-4 border border-slate-100 my-2">
-                                        <p class="text-[13px] text-slate-700 leading-loose whitespace-pre-wrap">{{ selectedSpot.desc }}</p>
+                                    <div v-if="selectedSpot.desc" class="bg-slate-50 rounded-xl px-3.5 py-3 my-2">
+                                        <p class="text-[10px] font-bold text-slate-400 tracking-widest mb-1">筆記</p>
+                                        <p class="text-[13px] text-slate-700 leading-relaxed whitespace-pre-wrap">{{ selectedSpot.desc }}</p>
                                     </div>
                                     
-                                    <!-- 智慧 Tag -->
-                                    <div v-if="selectedSpot.tags && selectedSpot.tags.length > 0" class="flex flex-col gap-2 mt-3 pt-3 border-t border-slate-100">
-                                        <div v-for="(group, type) in getGroupedTags(selectedSpot.tags)" :key="type" class="text-xs font-bold flex items-start">
-                                            <span class="px-1.5 py-0.5 rounded-[4px] border bg-transparent mr-1.5 inline-block shrink-0 mt-0.5 text-[10px]" :style="{ color: getTagColor(type), borderColor: getTagColor(type) }">{{ type }}</span>
-                                            <span class="text-slate-600 leading-relaxed pt-0.5">{{ group.join('、') }}</span>
+                                </div>
+
+                                <!-- 清單 -->
+                                <div v-if="selectedSpot.checklist && selectedSpot.checklist.length" class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+                                    <div class="flex items-center justify-between mb-3">
+                                        <p class="text-[14px] font-bold text-slate-800"><i class="fa-solid fa-list-check mr-1.5 text-slate-400"></i>清單</p>
+                                        <span class="text-[11px] font-bold text-slate-400 font-sans">{{ selectedSpot.checklist.filter(x => x.done).length }}/{{ selectedSpot.checklist.length }}<span v-if="checklistTotal(selectedSpot)" class="ml-2">約 ¥{{ checklistTotal(selectedSpot).toLocaleString() }}</span></span>
+                                    </div>
+                                    <div class="space-y-2.5">
+                                        <div v-for="g in checklistGroups(selectedSpot)" :key="'vg'+g.kind" class="rounded-xl overflow-hidden" :style="{ backgroundColor: kindSoft(g.kind) }">
+                                            <div class="flex items-center justify-between px-3 pt-2 pb-1.5">
+                                                <span class="text-[11px] font-bold flex items-center" :style="{ color: kindInk(g.kind) }">
+                                                    <i :class="'fa-solid ' + kindIcon(g.kind) + ' mr-1.5 text-[10px]'"></i>{{ g.kind }}
+                                                </span>
+                                                <span class="text-[10px] font-bold font-sans" :style="{ color: kindInk(g.kind) }">{{ g.items.filter(x => x.item.done).length }}/{{ g.items.length }}</span>
+                                            </div>
+                                            <div class="bg-white mx-1 mb-1 rounded-lg">
+                                                <div v-for="(it, gi) in g.items" :key="'vi'+it.idx" @click.stop="toggleCheckInView(it.idx)"
+                                                     class="flex items-center px-2.5 py-2.5 cursor-pointer" :class="gi > 0 ? 'border-t border-slate-100' : ''">
+                                                    <span class="w-5 h-5 rounded-full border-[1.5px] flex items-center justify-center shrink-0 mr-2.5 transition-colors" :style="it.item.done ? { backgroundColor: kindColor(g.kind), borderColor: kindColor(g.kind) } : { borderColor: '#CBD5E1', backgroundColor: '#fff' }">
+                                                        <i v-if="it.item.done" class="fa-solid fa-check text-[8px]" :style="{ color: onColor(kindColor(g.kind)) }"></i>
+                                                    </span>
+                                                    <span class="flex-1 min-w-0 text-[14px] font-bold leading-snug" :class="it.item.done ? 'text-slate-300 line-through' : 'text-slate-700'">{{ it.item.text || '未命名' }}</span>
+                                                    <span v-if="it.item.brand" class="text-[10px] font-bold text-slate-400 border border-slate-200 rounded px-1.5 py-[1px] ml-2 shrink-0">{{ it.item.brand }}</span>
+                                                    <span v-if="it.item.price" class="text-[12px] font-bold text-slate-500 font-sans ml-2 shrink-0">¥{{ Number(String(it.item.price).replace(/[^\d.]/g, '') || 0).toLocaleString() }}</span>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                                
-                                <!-- 附件檔案 -->
+
+                                <!-- 附件檔案 -->                                <!-- 附件檔案 -->
                                 <div v-if="selectedSpot.files && selectedSpot.files.length > 0" class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 mt-4">
                                     <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">附件檔案</p>
                                     <button type="button" v-for="(file, fIdx) in selectedSpot.files" :key="'f'+fIdx" @click.stop="openFilePreview(file)" class="w-full text-left flex items-center justify-between bg-slate-50 border border-slate-200 p-3 rounded-xl text-sm font-bold text-slate-700 active:scale-95 transition-transform mb-2 last:mb-0">
@@ -1234,12 +1283,13 @@
                             
                             <!-- 類別選擇 (等寬對齊設計) -->
                             <div class="bg-white p-2.5 rounded-2xl shadow-sm border border-slate-100 flex items-center w-full min-w-0">
-                                <button type="button" @click.stop="selectedSpot.type = 'spot'" class="flex-1 py-2 text-[10px] sm:text-[11px] font-bold transition-colors rounded-lg border mx-0.5 text-center shadow-sm" :style="selectedSpot.type === 'spot' ? `background-color: ${getSpotColor('spot')}; color: white; border-color: ${getSpotColor('spot')};` : 'background-color: white; color: #64748B; border-color: #E2E8F0;'">景點</button>
-                                <button type="button" @click.stop="selectedSpot.type = 'food'" class="flex-1 py-2 text-[10px] sm:text-[11px] font-bold transition-colors rounded-lg border mx-0.5 text-center shadow-sm" :style="selectedSpot.type === 'food' ? `background-color: ${getSpotColor('food')}; color: white; border-color: ${getSpotColor('food')};` : 'background-color: white; color: #64748B; border-color: #E2E8F0;'">美食</button>
-                                <button type="button" @click.stop="selectedSpot.type = 'shopping'" class="flex-1 py-2 text-[10px] sm:text-[11px] font-bold transition-colors rounded-lg border mx-0.5 text-center shadow-sm" :style="selectedSpot.type === 'shopping' ? `background-color: ${getSpotColor('shopping')}; color: white; border-color: ${getSpotColor('shopping')};` : 'background-color: white; color: #64748B; border-color: #E2E8F0;'">購物</button>
-                                <div class="w-px h-5 bg-slate-200 mx-1.5 shrink-0"></div>
-                                <button type="button" @click.stop="selectedSpot.type = 'transit'" class="flex-1 py-2 text-[10px] sm:text-[11px] font-bold transition-colors rounded-lg border mx-0.5 text-center shadow-sm" :style="selectedSpot.type === 'transit' ? `background-color: ${getSpotColor('transit')}; color: white; border-color: ${getSpotColor('transit')};` : 'background-color: white; color: #64748B; border-color: #E2E8F0;'">交通</button>
-                                <button type="button" @click.stop="selectedSpot.type = 'hotel'" class="flex-1 py-2 text-[10px] sm:text-[11px] font-bold transition-colors rounded-lg border mx-0.5 text-center shadow-sm" :style="selectedSpot.type === 'hotel' ? `background-color: ${getSpotColor('hotel')}; color: white; border-color: ${getSpotColor('hotel')};` : 'background-color: white; color: #64748B; border-color: #E2E8F0;'">住宿</button>
+                                <button type="button" @click.stop="selectedSpot.type = 'spot'" class="flex-1 py-2 text-[10px] sm:text-[11px] font-bold transition-colors rounded-lg border mx-0.5 text-center shadow-sm" :style="selectedSpot.type === 'spot' ? `background-color: ${getSpotColor('spot')}; color: ${onColor(getSpotColor('spot'))}; border-color: ${getSpotColor('spot')};` : 'background-color: white; color: #64748B; border-color: #E2E8F0;'">景點</button>
+                                <button type="button" @click.stop="selectedSpot.type = 'food'" class="flex-1 py-2 text-[10px] sm:text-[11px] font-bold transition-colors rounded-lg border mx-0.5 text-center shadow-sm" :style="selectedSpot.type === 'food' ? `background-color: ${getSpotColor('food')}; color: ${onColor(getSpotColor('food'))}; border-color: ${getSpotColor('food')};` : 'background-color: white; color: #64748B; border-color: #E2E8F0;'">美食</button>
+                                <button type="button" @click.stop="selectedSpot.type = 'shopping'" class="flex-1 py-2 text-[10px] sm:text-[11px] font-bold transition-colors rounded-lg border mx-0.5 text-center shadow-sm" :style="selectedSpot.type === 'shopping' ? `background-color: ${getSpotColor('shopping')}; color: ${onColor(getSpotColor('shopping'))}; border-color: ${getSpotColor('shopping')};` : 'background-color: white; color: #64748B; border-color: #E2E8F0;'">購物</button>
+                                <button type="button" @click.stop="selectedSpot.type = 'konbini'" class="flex-1 py-2 text-[10px] sm:text-[11px] font-bold transition-colors rounded-lg border mx-0.5 text-center shadow-sm" :style="selectedSpot.type === 'konbini' ? `background-color: ${getSpotColor('konbini')}; color: ${onColor(getSpotColor('konbini'))}; border-color: ${getSpotColor('konbini')};` : 'background-color: white; color: #64748B; border-color: #E2E8F0;'">超商</button>
+                                <div class="w-px h-5 bg-slate-200 mx-1 shrink-0"></div>
+                                <button type="button" @click.stop="selectedSpot.type = 'transit'" class="flex-1 py-2 text-[10px] sm:text-[11px] font-bold transition-colors rounded-lg border mx-0.5 text-center shadow-sm" :style="selectedSpot.type === 'transit' ? `background-color: ${getSpotColor('transit')}; color: ${onColor(getSpotColor('transit'))}; border-color: ${getSpotColor('transit')};` : 'background-color: white; color: #64748B; border-color: #E2E8F0;'">交通</button>
+                                <button type="button" @click.stop="selectedSpot.type = 'hotel'" class="flex-1 py-2 text-[10px] sm:text-[11px] font-bold transition-colors rounded-lg border mx-0.5 text-center shadow-sm" :style="selectedSpot.type === 'hotel' ? `background-color: ${getSpotColor('hotel')}; color: ${onColor(getSpotColor('hotel'))}; border-color: ${getSpotColor('hotel')};` : 'background-color: white; color: #64748B; border-color: #E2E8F0;'">住宿</button>
                             </div>
                             
                             <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 space-y-4">
@@ -1660,24 +1710,46 @@
                                 </label>
                             </div>
 
-                            <!-- 重點 Tag 新增區 -->
+                            <!-- ✅ 清單：必吃・必買・必拍・必做 -->
                             <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
-                                <label class="block text-xs font-bold text-slate-700 mb-2"><i class="fa-solid fa-tag mr-1 text-slate-400"></i> 加入重點標籤</label>
-                                <div class="flex space-x-2 mb-2">
-                                    <select v-model="newTagType" class="bg-white border border-slate-200 shadow-sm rounded-lg px-2 text-xs font-bold outline-none text-slate-600 shrink-0">
-                                        <option>必吃</option><option>必買</option><option>必做</option>
-                                    </select>
-                                    <input type="text" v-model="newTagText" @keyup.enter="addTag" placeholder="例: 淺草炸肉餅" class="flex-1 min-w-0 bg-white border border-slate-200 shadow-sm rounded-lg px-2 py-1.5 text-sm outline-none focus:border-brand">
-                                    <button type="button" @click.stop="addTag" class="bg-slate-700 text-white px-3 rounded-lg text-xs font-bold shrink-0"><i class="fa-solid fa-plus"></i></button>
+                                <div class="flex items-center justify-between mb-2.5">
+                                    <label class="text-xs font-bold text-slate-700"><i class="fa-solid fa-list-check mr-1 text-slate-400"></i> 清單</label>
+                                    <span class="text-[10px] font-bold text-slate-400">必吃・必買・必拍・必做，到現場可直接勾</span>
                                 </div>
-                                <div class="flex flex-col gap-2 mt-2">
-                                    <div v-for="(group, type) in getGroupedTags(selectedSpot.tags)" :key="type" class="text-xs font-bold">
-                                        <span class="px-1.5 py-0.5 rounded-[4px] border bg-transparent mr-1 inline-block mb-1" :style="{ color: getTagColor(type), borderColor: getTagColor(type) }">{{ type }}</span>
-                                        <div class="flex flex-wrap gap-1">
-                                            <span v-for="(text, idx) in group" :key="idx" class="bg-slate-50 border border-slate-200 text-slate-600 px-2 py-0.5 rounded-full flex items-center">
-                                                {{ text }} <i @click.stop="removeTag(type, text)" class="fa-solid fa-xmark ml-1 text-slate-400 cursor-pointer p-0.5 hover:text-red-400"></i>
-                                            </span>
+                                <div class="flex gap-1.5 mb-2">
+                                    <button type="button" v-for="k in checklistKinds" :key="'k'+k" @click.stop="newCheckKind = k"
+                                            class="text-[11px] font-bold px-2.5 py-1 rounded-full border transition-colors"
+                                            :style="newCheckKind === k ? { backgroundColor: kindColor(k), borderColor: kindColor(k), color: onColor(kindColor(k)) } : { backgroundColor: '#fff', borderColor: '#E2E8F0', color: '#64748B' }">{{ k }}</button>
+                                </div>
+                                <div class="flex gap-2">
+                                    <input type="text" v-model="newCheckText" @keyup.enter="addCheckItem()" :placeholder="checkPlaceholder" class="flex-1 min-w-0 bg-white border border-slate-200 shadow-sm rounded-lg px-2.5 py-2 text-sm outline-none focus:border-brand">
+                                    <button type="button" @click.stop="addCheckItem()" class="bg-[#1e293b] text-white px-3 rounded-lg text-xs font-bold shrink-0"><i class="fa-solid fa-plus"></i></button>
+                                </div>
+
+                                <div v-if="selectedSpot.checklist && selectedSpot.checklist.length" class="mt-3 rounded-xl border border-slate-100 divide-y divide-slate-100">
+                                    <div v-for="(it, ci) in selectedSpot.checklist" :key="'ec'+ci" class="px-2.5 py-2">
+                                        <div class="flex items-center gap-2">
+                                            <button type="button" @click.stop="cycleKind(it)" class="text-[10px] font-bold px-1.5 py-[3px] rounded shrink-0 leading-none" :style="kindChipStyle(it.kind)" title="點一下切換類型">{{ it.kind }}</button>
+                                            <input type="text" v-model="it.text" class="flex-1 min-w-0 text-[13px] font-bold text-slate-700 bg-transparent outline-none">
+                                            <span class="text-[11px] font-bold text-slate-300 shrink-0">¥</span>
+                                            <input type="text" inputmode="numeric" v-model="it.price" placeholder="價格" class="w-[54px] text-right text-[12px] font-bold font-sans text-slate-600 bg-slate-50 border border-slate-100 rounded px-1.5 py-1 outline-none shrink-0">
+                                            <button type="button" @click.stop="selectedSpot.checklist.splice(ci, 1)" class="w-6 h-6 text-slate-300 hover:text-red-400 shrink-0"><i class="fa-solid fa-xmark text-[11px]"></i></button>
                                         </div>
+                                        <div v-if="selectedSpot.type === 'konbini'" class="flex gap-1 mt-1.5 pl-[34px]">
+                                            <button type="button" v-for="b in konbiniBrands" :key="b" @click.stop="it.brand = (it.brand === b ? '' : b)"
+                                                    class="text-[10px] font-bold px-1.5 py-[3px] rounded border leading-none"
+                                                    :class="it.brand === b ? 'bg-slate-700 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-400'">{{ b }}</button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div v-if="checklistSuggestions.length" class="mt-3">
+                                    <p class="text-[10px] font-bold text-slate-400 mb-1.5">常見清單（點一下加入）</p>
+                                    <div class="flex flex-wrap gap-1.5">
+                                        <button type="button" v-for="sg in checklistSuggestions" :key="sg.kind + sg.text" @click.stop="addCheckItem(sg.text, sg.kind, sg.brand)"
+                                                class="text-[11px] font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-full pl-1 pr-2.5 py-[3px] flex items-center active:bg-slate-100">
+                                            <span class="text-[9px] px-1 py-[2px] rounded mr-1 leading-none" :style="kindChipStyle(sg.kind)">{{ sg.kind }}</span>{{ sg.brand ? sg.brand + ' ' : '' }}{{ sg.text }}
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -1732,21 +1804,103 @@
                 </div>
 
                 <!-- 新增手動天數 Modal -->
-                <!-- 備份與匯出 -->
+                <!-- ⚙️ 設定（外觀主題＋備份與匯出） -->
                 <div v-if="showBackupModal" @click.self="showBackupModal = false" class="fixed inset-0 z-[85] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-                    <div class="bg-white w-full max-w-[400px] rounded-[22px] max-h-[82vh] flex flex-col overflow-hidden animate-pop-in shadow-2xl">
-                        <div class="px-5 pt-5 pb-3 shrink-0 relative">
+                    <div class="bg-white w-full max-w-[400px] rounded-[22px] max-h-[86vh] flex flex-col overflow-hidden animate-pop-in shadow-2xl">
+                        <div class="px-5 pt-5 pb-3 shrink-0 relative border-b border-slate-100">
                             <button type="button" @click="showBackupModal = false" class="absolute top-4 right-4 w-8 h-8 bg-slate-50 rounded-full text-slate-500 flex justify-center items-center"><i class="fa-solid fa-xmark"></i></button>
-                            <h3 class="text-base font-bold text-slate-800">備份與匯出</h3>
-                            <p class="text-[11px] font-bold text-slate-400 mt-1">行程只存在這台裝置上，記得偶爾備份一下</p>
+                            <h3 class="text-base font-bold text-slate-800">設定</h3>
+                            <p class="text-[11px] font-bold text-slate-400 mt-1">外觀主題・備份與匯出</p>
                         </div>
-                        <div class="overflow-y-auto px-4 pb-5 space-y-4">
+                        <div class="overflow-y-auto overscroll-contain hide-scrollbar px-4 pt-4 pb-5 space-y-5" style="-webkit-overflow-scrolling: touch;">
+                            <!-- 外觀主題 -->
+                            <div>
+                                <div class="flex items-baseline justify-between px-1 mb-2">
+                                    <p class="text-[10px] font-bold text-slate-400 tracking-widest">外觀主題</p>
+                                    <p class="text-[10px] font-bold text-slate-400">目前：<span class="text-slate-600">{{ activeThemeName }}</span></p>
+                                </div>
+                                <div class="grid grid-cols-3 gap-2">
+                                    <button type="button" v-for="t in themePresets" :key="t.id" @click="setTheme(t.id)"
+                                            class="relative rounded-xl border p-2 text-left transition-all active:scale-[0.97] bg-white"
+                                            :class="settings.themeId === t.id ? 'border-slate-700 shadow-sm' : 'border-slate-200'">
+                                        <div class="h-9 rounded-lg overflow-hidden flex mb-1.5">
+                                            <span v-for="(c, ci) in buildTheme(themeSource(t.id)).colors" :key="'st'+ci" class="flex-1 h-full" :style="{ backgroundColor: c }"></span>
+                                        </div>
+                                        <p class="text-[11px] font-bold text-slate-700 leading-tight truncate">{{ t.name }}</p>
+                                        <p class="text-[8px] font-bold text-slate-400 tracking-wider uppercase truncate">{{ (settings.overrides || {})[t.id] ? '已修改' : t.en }}</p>
+                                        <i v-if="settings.themeId === t.id" class="fa-solid fa-circle-check absolute -top-1.5 -right-1.5 text-[15px] text-slate-700 bg-white rounded-full"></i>
+                                    </button>
+                                </div>
+                                <div v-if="settings.savedThemes.length" class="mt-3">
+                                    <p class="text-[10px] font-bold text-slate-400 tracking-widest mb-1.5 px-1">我的配色</p>
+                                    <div class="grid grid-cols-3 gap-2">
+                                        <div v-for="t in settings.savedThemes" :key="t.id" @click="setTheme(t.id)" role="button"
+                                             class="relative rounded-xl border p-2 cursor-pointer transition-all active:scale-[0.97]"
+                                             :class="settings.themeId === t.id ? 'border-slate-700 shadow-sm' : 'border-slate-200'">
+                                            <div class="h-9 rounded-lg overflow-hidden flex mb-1.5">
+                                                <span v-for="(c, ci) in buildTheme(themeSource(t.id)).colors" :key="'ms'+ci" class="flex-1 h-full" :style="{ backgroundColor: c }"></span>
+                                            </div>
+                                            <p class="text-[11px] font-bold text-slate-700 truncate">{{ t.name }}</p>
+                                            <button type="button" @click.stop="removeSavedTheme(t.id)" class="absolute -top-1.5 -right-1.5 w-[18px] h-[18px] rounded-full bg-white border border-slate-200 text-slate-400 flex items-center justify-center shadow-sm"><i class="fa-solid fa-xmark text-[8px]"></i></button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- 編輯目前主題的 8 個顏色 -->
+                                <div class="mt-3 rounded-xl bg-slate-50 border border-slate-100 p-3">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <p class="text-[11px] font-bold text-slate-600 truncate pr-2">編輯「{{ activeThemeName }}」</p>
+                                        <button v-if="themeModified" type="button" @click="resetTheme" class="text-[10px] font-bold text-slate-500 bg-white border border-slate-200 rounded-full px-2 py-1 shrink-0 active:scale-95"><i class="fa-solid fa-rotate-left mr-1"></i>恢復預設</button>
+                                    </div>
+                                    <!-- 8 色色票：點色塊直接改 -->
+                                    <div class="flex rounded-lg overflow-hidden h-12 shadow-sm">
+                                        <label v-for="(c, ci) in currentTheme.colors" :key="'ed'+ci" class="relative flex-1 cursor-pointer" :style="{ backgroundColor: c }">
+                                            <input type="color" :value="c" @input="setThemeColor(ci, $event.target.value)" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                                            <span v-if="ci === currentTheme.accentIdx" class="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full pointer-events-none" :style="{ backgroundColor: onColor(c) }"></span>
+                                        </label>
+                                    </div>
+                                    <div class="flex mt-1">
+                                        <span v-for="(c, ci) in currentTheme.colors" :key="'hx'+ci" class="flex-1 text-center text-[7.5px] font-bold font-sans text-slate-400 uppercase tracking-tight">{{ c }}</span>
+                                    </div>
+                                    <p class="text-[10px] font-bold text-slate-400 mt-1.5">左深右淺。Day 1 用最左邊的顏色，往右漸淺；點色塊可以改色。</p>
+
+                                    <div class="mt-3 space-y-2.5">
+                                        <div class="flex items-center">
+                                            <span class="text-[11px] font-bold text-slate-500 w-[52px] shrink-0">主色</span>
+                                            <div class="flex gap-1.5 flex-wrap">
+                                                <button type="button" v-for="(c, ci) in currentTheme.colors" :key="'ac'+ci" @click="setAccentIdx(ci)"
+                                                        class="w-6 h-6 rounded-full border-2 transition-transform" :class="ci === currentTheme.accentIdx ? 'scale-110' : ''"
+                                                        :style="{ backgroundColor: c, borderColor: ci === currentTheme.accentIdx ? '#334155' : '#FFFFFF', boxShadow: '0 0 0 1px #E2E8F0' }"></button>
+                                            </div>
+                                        </div>
+                                        <p class="text-[10px] font-bold text-slate-400 pl-[52px] -mt-1">按鈕、標題、勾選圈用這個顏色</p>
+                                        <div class="flex items-center">
+                                            <span class="text-[11px] font-bold text-slate-500 w-[52px] shrink-0">底色</span>
+                                            <label class="relative w-7 h-7 rounded-full border-2 border-white shadow ring-1 ring-slate-200 overflow-hidden cursor-pointer shrink-0" :style="{ backgroundColor: currentTheme.bg }">
+                                                <input type="color" :value="currentTheme.bg" @input="setThemeBg($event.target.value)" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                                            </label>
+                                            <span class="text-[10px] font-bold text-slate-400 font-sans uppercase ml-2">{{ currentTheme.bg }}</span>
+                                        </div>
+                                        <div class="flex items-center">
+                                            <span class="text-[11px] font-bold text-slate-500 w-[52px] shrink-0">一鍵產生</span>
+                                            <label class="relative text-[11px] font-bold text-slate-600 bg-white border border-slate-200 rounded-full pl-1 pr-3 py-1 flex items-center cursor-pointer active:scale-95">
+                                                <span class="w-5 h-5 rounded-full mr-1.5" style="background: conic-gradient(#f87171, #fbbf24, #a3e635, #34d399, #38bdf8, #818cf8, #e879f9, #f87171);"></span>
+                                                選一個顏色，自動配 8 色
+                                                <input type="color" :value="currentTheme.accent" @change="generateFromColor($event.target.value)" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <button type="button" @click="saveCustomTheme" class="w-full mt-3 text-[12px] font-bold py-2.5 rounded-lg bg-[#1e293b] text-white active:scale-[0.98]"><i class="fa-regular fa-heart mr-1"></i>另存為我的配色</button>
+                                </div>
+                            </div>
+
+                            <!-- 備份與匯出 -->
                             <div>
                                 <p class="text-[10px] font-bold text-slate-400 tracking-widest px-1 mb-1.5">電腦 ↔ 手機搬移</p>
                                 <div class="rounded-2xl border border-slate-100 overflow-hidden divide-y divide-slate-100">
                                     <button type="button" @click="exportBackupJSON" class="w-full flex items-center px-4 py-3.5 text-left active:bg-slate-50">
                                         <i class="fa-solid fa-file-arrow-down w-5 text-[#3F7FB0] text-sm"></i>
-                                        <span class="flex-1 ml-2"><span class="block text-[14px] font-bold text-slate-800">下載備份檔</span><span class="block text-[11px] font-bold text-slate-400 mt-0.5">整份行程、花費、待辦、照片與附件</span></span>
+                                        <span class="flex-1 ml-2"><span class="block text-[14px] font-bold text-slate-800">下載備份檔</span><span class="block text-[11px] font-bold text-slate-400 mt-0.5">整份行程、花費、待辦、照片、附件與主題</span></span>
                                         <i class="fa-solid fa-chevron-right text-[10px] text-slate-300"></i>
                                     </button>
                                     <label class="w-full flex items-center px-4 py-3.5 text-left active:bg-slate-50 cursor-pointer">
@@ -1781,6 +1935,9 @@
                     <div class="shrink-0" style="width: min(92vh, 205vw, 1100px); transform: rotate(90deg);" @click.stop="ticketSide = ticketSide === 0 ? 1 : 0">
                         <boarding-pass :flight="tripInfo.flights[ticketSide]" :dir="ticketSide === 1 ? 'back' : 'out'" :passenger="tripInfo.passengerName" :year="ticketSide === 1 ? endYear : startYear"></boarding-pass>
                     </div>
+                    <button type="button" @click.stop="ticketZoom = false" class="absolute right-4 w-9 h-9 rounded-full bg-white/10 text-white/80 flex items-center justify-center backdrop-blur-sm" style="top: calc(env(safe-area-inset-top, 0px) + 14px);" aria-label="關閉">
+                        <i class="fa-solid fa-xmark text-sm"></i>
+                    </button>
                     <button type="button" @click.stop="downloadTicket" class="absolute right-4 bottom-8 w-10 h-10 rounded-full bg-white/15 text-white flex items-center justify-center" aria-label="下載這張機票">
                         <i class="fa-solid" :class="isDownloadingTicket ? 'fa-spinner animate-spin' : 'fa-download'"></i>
                     </button>
@@ -2037,6 +2194,178 @@
             return fromDB;
         }
 
+
+        // ===== 主題配色（取自 Coolors / Color Hunt 熱門同色系配色，略降飽和、去掉最深色） =====
+        const THEME_PRESETS = [
+            { id: 'ocean', colors: ["#023E8A", "#0077B6", "#0096C7", "#00B4D8", "#48CAE4", "#90E0EF", "#ADE8F4", "#CAF0F8"], name: '靜謐海藍', en: 'Serene Ocean', accent: '#1E4E79', bg: '#F4F6F8',
+              stops: ['#023E8A', '#0077B6', '#0096C7', '#00B4D8', '#48CAE4', '#7FD4EA'],
+              pie: ['#023E8A', '#48CAE4', '#0077B6', '#90E0EF', '#0096C7', '#ADE8F4', '#00B4D8', '#CAF0F8', '#0369A1', '#67D3EB', '#0E7490', '#BAE6FD'],
+              spot: { food: '#87ceeb', spot: '#256694', transit: '#6E99B5', hotel: '#1A7DA1', shopping: '#8ABAD4', konbini: '#4FA3C7' } },
+            { id: 'serenity', colors: ["#1C2C5E", "#31507C", "#40729F", "#5196C0", "#71B4D3", "#95CCE0", "#BCE0EC", "#E3F2F7"], name: '海洋靜謐', en: 'Ocean Serenity', accent: '#3E6AA6', bg: '#F3F6FA', stops: ['#283E85', '#4776B1', '#5794C2', '#68B1D4', '#81C7E1', '#9DD6EA'],
+              spot: { spot: '#3E6AA6', hotel: '#283E85', transit: '#79A6BD', food: '#7FB8D8', shopping: '#5E72B8', konbini: '#48AEBB' } },
+            { id: 'deepsea', colors: ["#293243", "#3F4C62", "#56657E", "#717F98", "#909AAE", "#AEB6C4", "#CCD1DA", "#EBECF0"], name: '深海霧藍', en: 'Deep Sea', accent: '#4B5A74', bg: '#F3F4F3', stops: ['#3C4A63', '#4B5A74', '#65738D', '#7F8DA6', '#9AA5B8'] },
+            { id: 'sakura', colors: ["#954258", "#B64663", "#CA5774", "#D86E88", "#DF8CA1", "#E6AABA", "#EEC7D1", "#F6E4E9"], name: '櫻花奶霜', en: 'Soft Pink Delight', accent: '#C9637C', bg: '#FBF6F8', stops: ['#B4566F', '#D06F88', '#DF7992', '#E796AB', '#ECB0C0'] },
+            { id: 'pdream', colors: ["#49426A", "#5F5582", "#74639F", "#907CB2", "#AF98C0", "#CAB5CF", "#E0CFDE", "#F1E9F0"], name: '紫夢藕粉', en: 'Purple Dream', accent: '#6E6499', bg: '#F7F5F9', stops: ['#5E558A', '#7C6FA6', '#9B88BC', '#B597C1', '#CBA8C6'] },
+            { id: 'amethyst', colors: ["#46276C", "#5C3C85", "#7350A1", "#8967B8", "#A185C9", "#B9A4D9", "#D3C4E7", "#ECE6F5"], name: '紫晶葡萄', en: 'Amethyst', accent: '#7652A3', bg: '#F7F4FB', stops: ['#5E3591', '#7650A8', '#8E6BBE', '#A688D2', '#BCA4E0'] },
+            { id: 'earthy', colors: ["#2C383A", "#455752", "#5D736A", "#769083", "#93A897", "#B1C1AF", "#CFD8CD", "#ECEFEB"], name: '苔原森林', en: 'Earthy Green', accent: '#5F786F', bg: '#F4F5F2', stops: ['#3E4E51', '#52685F', '#6A8578', '#8FA88E', '#A9BCA4'] },
+            { id: 'matcha', colors: ["#1E4835", "#316B50", "#458B6A", "#5CA983", "#84B79D", "#A5CBB7", "#C6DFD2", "#E8F2ED"], name: '宇治抹茶', en: 'Uji Matcha', accent: '#3F8463', bg: '#F3F6F3', stops: ['#2D6A4F', '#3B8160', '#4D9873', '#6BAE8C', '#8CC3A6'] },
+            { id: 'hojicha', colors: ["#5C3D29", "#7E5338", "#996C4D", "#AD896A", "#C2A386", "#D4BDA4", "#E5D6C5", "#F4EDE6"], name: '焙茶琥珀', en: 'Hojicha Latte', accent: '#9C6644', bg: '#F8F4EF', stops: ['#7F5539', '#9C6644', '#B08968', '#C6A27E', '#D7B998'],
+              spot: { spot: '#9C6644', hotel: '#6F4A33', transit: '#B08968', food: '#C9A27A', shopping: '#A08A55', konbini: '#B9735A' } },
+            { id: 'milktea', colors: ["#7D6350", "#99775B", "#AC8A6D", "#BD9E84", "#CBB39C", "#D9C6B4", "#E7DACD", "#F3EDE7"], name: '鴛鴦奶茶', en: 'Milk Tea', accent: '#B08E72', bg: '#FAF6F2', stops: ['#9C7C64', '#B08E72', '#C1A287', '#D1B79E', '#DFCAB4'],
+              spot: { spot: '#B08E72', hotel: '#8A6C56', transit: '#B3A396', food: '#CDAA8D', shopping: '#BE9483', konbini: '#A39A79' } },
+            { id: 'honey', colors: ["#CA9D24", "#E0B231", "#E8C04A", "#EFCD65", "#F2D783", "#F4E0A3", "#F8EAC1", "#FBF4E0"], name: '晴空鵝黃', en: 'Sunny Yellow', accent: '#F2C94C', bg: '#FFFBF0', light: true, stops: ['#D9A92A', '#E6B935', '#F2C94C', '#F6D46A', '#F9E08F'],
+              spot: { spot: '#EDBE3A', hotel: '#C9961E', transit: '#DCC57A', food: '#F5AE4A', shopping: '#D3C24A', konbini: '#F6D872' } },
+            { id: 'graphite', colors: ["#32373B", "#4A5157", "#636B72", "#7C858D", "#999FA5", "#B4B9BE", "#D0D3D6", "#ECEDEE"], name: '石墨灰階', en: 'Graphite', accent: '#5C646C', bg: '#F3F4F5', stops: ['#495057', '#5C646C', '#6C757D', '#8B939B', '#A5ACB3'],
+              spot: { spot: '#5C646C', hotel: '#3F464D', transit: '#7A8C99', food: '#A0968A', shopping: '#717C90', konbini: '#7E8F86' } }
+        ];
+        function hexToRgb(h) { h = String(h || '').replace('#', ''); if (h.length === 3) h = h.split('').map(c => c + c).join(''); const n = parseInt(h, 16) || 0; return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+        function rgbToHex(r) { return '#' + r.map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('').toUpperCase(); }
+        function mixHex(a, b, t) { const A = hexToRgb(a), B = hexToRgb(b); return rgbToHex(A.map((v, i) => v + (B[i] - v) * t)); }
+        function hexToHsl(hex) {
+            let [r, g, b] = hexToRgb(hex).map(v => v / 255);
+            const mx = Math.max(r, g, b), mn = Math.min(r, g, b); let h = 0, s = 0; const l = (mx + mn) / 2;
+            if (mx !== mn) { const d = mx - mn; s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn);
+                h = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h *= 60; }
+            return [h, s, l];
+        }
+        function hslToHex(h, s, l) {
+            h = ((h % 360) + 360) % 360; s = Math.max(0, Math.min(1, s)); l = Math.max(0, Math.min(1, l));
+            const c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = l - c / 2;
+            const [r, g, b] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
+            return rgbToHex([(r + m) * 255, (g + m) * 255, (b + m) * 255]);
+        }
+        function relLum(hex) { const c = hexToRgb(hex).map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; }
+        // 沿著色階（深→淺）取第 t (0~1) 個位置的顏色
+        function sampleStops(stops, t) {
+            if (stops.length === 1) return stops[0];
+            const p = Math.max(0, Math.min(1, t)) * (stops.length - 1), i = Math.min(Math.floor(p), stops.length - 2);
+            return mixHex(stops[i], stops[i + 1], p - i);
+        }
+        // 各類別顏色：同色系，但色相微調＋明暗拉開，一眼分得出來；全部都能放白字
+        function categoryColors(accent, hueScale, light) {
+            const hs = hueScale || 1, cap = light ? 0.62 : 0.46;
+            const [H, S0, L] = hexToHsl(accent);
+            const S = Math.max(S0, 0.28);
+            const mk = (dh, dl, sm) => {
+                dh *= hs;
+                let LL = Math.min(L + dl, 0.74), c = hslToHex(H + dh, Math.min(1, S * sm), LL);
+                while (relLum(c) > cap && LL > 0.2) { LL -= 0.02; c = hslToHex(H + dh, Math.min(1, S * sm), LL); }
+                return c;
+            };
+            return { hotel: mixHex(accent, '#000000', 0.25), spot: accent, konbini: mk(-28, 0.06, 1.0), transit: mk(-14, 0.16, 0.75), shopping: mk(26, 0.05, 1.0), food: mk(6, 0.27, 0.9) };
+        }
+        // 自訂顏色：保留你選的顏色本身（只把過度鮮豔的飽和度稍微收一點），不再硬壓成土色
+        function usableAccent(hex) {
+            let [H, S, L] = hexToHsl(hex);
+            if (S > 0.82) S = 0.8;
+            return hslToHex(H, S, L);
+        }
+        // 淺色主題（例如亮黃）：上面的字改用同色系的深色，而不是把顏色壓暗
+        function isLightColor(hex) { return relLum(hex) > 0.32; }
+        // 由深到淺 5 階，保證每一階都不同
+        function stopsFromAccent(accent) {
+            const [H, S0, L] = hexToHsl(accent);
+            const S = Math.min(S0, 0.8);
+            if (isLightColor(accent)) {
+                const Lmax = Math.min(0.86, L + 0.12), Lmin = Math.max(0.34, L - 0.15);
+                // 黃色系變深時容易變土，深的那端稍微往橘金偏，看起來像「金黃」而不是「土黃」
+                const warm = H >= 35 && H <= 75;
+                return [0, 0.25, 0.5, 0.75, 1].map(t => hslToHex(warm ? H - 10 * (1 - t) : H, Math.min(0.9, S * (warm ? 1.08 - 0.12 * t : 1 - 0.1 * t)), Lmin + (Lmax - Lmin) * t));
+            }
+            let Lmax = Math.min(0.82, L + 0.22);
+            while (Lmax > 0.2 && relLum(hslToHex(H, S, Lmax)) > 0.42) Lmax -= 0.01;
+            let Lmin = Math.max(0.16, Math.min(L - 0.12, Lmax - 0.22));
+            return [0, 0.25, 0.5, 0.75, 1].map(t => hslToHex(H, S * (1 - 0.12 * t), Lmin + (Lmax - Lmin) * t));
+        }
+        // 一個顏色 → 8 階（深→淺），給「用一個顏色產生」使用
+        function gen8(hex) {
+            let [H, S, L] = hexToHsl(hex);
+            S = Math.min(S, 0.8);
+            const warm = H >= 35 && H <= 75;
+            const Ld = Math.max(0.16, Math.min(L - 0.22, 0.42)), Ll = 0.92;
+            return [0, 1, 2, 3, 4, 5, 6, 7].map(i => {
+                const t = i / 7;
+                return hslToHex(warm ? H - 10 * (1 - t) : H, Math.min(0.9, S * (1.05 - 0.25 * t)), Ld + (Ll - Ld) * t);
+            });
+        }
+        // 你選的那個顏色會原封不動放進 8 色裡（放在亮度最接近的位置），並設為主色
+        function gen8Keep(hex) {
+            const cols = gen8(hex);
+            const [, , L] = hexToHsl(hex);
+            let best = 0, bd = 9;
+            cols.forEach((c, i) => { const d = Math.abs(hexToHsl(c)[2] - L); if (d < bd) { bd = d; best = i; } });
+            cols[best] = String(hex).toUpperCase();
+            return { colors: cols, idx: best };
+        }
+        // 主題 = 8 個顏色（深→淺）＋底色＋主色是第幾個；其餘顏色都由這 8 色推出來
+        function buildTheme(t) {
+            const W = '#FFFFFF', K = '#000000';
+            const C = (Array.isArray(t.colors) && t.colors.length === 8) ? t.colors.slice() : gen8(t.accent || '#1E4E79');
+            const a = (t.accentIdx != null) ? C[t.accentIdx] : (t.accent || C[1]);
+            const light = isLightColor(a);
+            const deep = mixHex(a, K, light ? 0.45 : 0.3);
+            const ink = mixHex(a, K, 0.72);
+            const pool = [0, 1, 2, 3, 4, 5].map(i => C[i]).filter(c => c.toUpperCase() !== String(a).toUpperCase());
+            const derivedSpot = { spot: a, hotel: pool[0], shopping: pool[1], konbini: pool[2], transit: pool[3], food: pool[4] };
+            return {
+                id: t.id, name: t.name, accent: a, bg: t.bg || '#F4F6F8', colors: C, stops: C, light, edited: !!t.edited,
+                accentIdx: t.accentIdx != null ? t.accentIdx : C.findIndex(c => c.toUpperCase() === String(a).toUpperCase()),
+                deep, accent2: light ? mixHex(a, K, 0.2) : mixHex(a, W, 0.25),
+                text: light ? mixHex(a, K, 0.42) : a,
+                onAccent: light ? ink : '#FFFFFF',
+                soft: mixHex(a, W, light ? 0.8 : 0.88), line: mixHex(a, W, light ? 0.45 : 0.58),
+                vivid: light ? mixHex(a, K, 0.3) : C[1],
+                palette: [0, 4, 1, 5, 2, 6, 3, 7].map(i => C[i]).concat([mixHex(C[0], C[1], 0.5), mixHex(C[2], C[3], 0.5), mixHex(C[4], C[5], 0.5), mixHex(C[6], C[7], 0.5)]),
+                spot: (t.spot && !t.edited) ? t.spot : derivedSpot
+            };
+        }
+        // 每日顏色：沿著前 6 個顏色由深到淺取色（最淺的兩個留給底色用）
+        function dayShade(colors, t) { return sampleStops(colors.slice(0, 5), t); }
+        function shadeHex(hex, shade) {
+            if (!shade) return hex;
+            const [H, S, L] = hexToHsl(hex);
+            return hslToHex(H, S, Math.max(0.08, Math.min(0.92, L + shade / 100)));
+        }
+        // 用樣式覆蓋把 App 裡固定的藍色換成主題色（預設主題不覆蓋，保持原樣）
+        function themeCss(T) {
+            if (T.id === 'ocean' && !T.edited) return '';
+            const sel = (cls) => `[class~="${cls}"]`;
+            const rgb = hexToRgb(T.bg).join(',');
+            const rules = [
+                [['bg-[#1E4E79]'], `background-color:${T.accent}!important;color:${T.onAccent}!important`],
+                [['bg-[#1e293b]', 'bg-slate-800'], `background-color:${T.deep}!important`],
+                [['text-[#1E4E79]', 'text-[#1A5F8A]', 'text-[#256694]', 'text-[#4682b4]', 'text-[#1A7DA1]'], `color:${T.text}!important`],
+                [['bg-[#e0eaf5]'], `background-color:${T.soft}!important`],
+                // 卡片裡的淡灰底塊、細框線，也帶一點主題色
+                [['bg-slate-50', 'bg-slate-50/60', 'bg-slate-50/70', 'bg-slate-50/80'], `background-color:${mixHex('#FFFFFF', T.accent, 0.045)}!important`],
+                [['bg-slate-100', 'bg-slate-200/60', 'bg-slate-200/70'], `background-color:${mixHex('#F6F7F8', T.accent, 0.09)}!important`],
+                [['border-slate-100', 'border-slate-50', 'divide-slate-100'], `border-color:${mixHex('#F1F3F5', T.accent, 0.08)}!important`],
+                [['border-slate-200'], `border-color:${mixHex('#E4E7EB', T.accent, 0.12)}!important`],
+                [['text-[#1e293b]'], `color:${T.deep}!important`],
+                [['text-brand', 'text-[#3F7FB0]', 'text-[#6E99B5]'], `color:${T.accent2}!important`],
+                [['bg-brand', 'bg-[#3F7FB0]'], `background-color:${T.accent2}!important`],
+                [['border-[#1E4E79]', 'border-slate-700'], `border-color:${T.light ? T.deep : T.accent}!important`],
+                [['bg-[#EAF3F9]'], `background-color:${T.soft}!important`],
+                [['border-[#9CC3DD]', 'border-[#9CC3DD]/70', 'border-[#9CC3DD]/60'], `border-color:${T.line}!important`],
+                [['bg-[#F4F6F8]'], `background-color:${T.bg}!important`],
+                [['text-slate-700'], ''], // 佔位，保留一般文字顏色
+            ];
+            let css = rules.filter(r => r[1]).map(([cls, decl]) => cls.map(sel).join(',') + `{${decl}}`).join('\n');
+            css += `\n[class~="bg-[#1E4E79]"] [class~="text-white"],[class~="bg-[#1E4E79]"] i{color:${T.onAccent}!important}`;
+            css += `\n[class~="divide-slate-100"]>*+*{border-color:${mixHex('#F1F3F5', T.accent, 0.08)}!important}`;
+            css += `\n.app-container{background-color:${T.bg}!important}`;
+            css += `\n.glass-header{background:rgba(${rgb},0.95)!important}`;
+            css += `\n@media (max-width:500px){html,body{background-color:${T.bg}!important}}`;
+            return css;
+        }
+
+        // 淺色底配深藍字、深色底配白字
+        function inkOn(hex) {
+            const h = String(hex || '').replace('#', '');
+            if (h.length !== 6) return '#fff';
+            const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
+            return (0.299 * r + 0.587 * g + 0.114 * b) > 165 ? '#03045E' : '#fff';
+        }
         const app = createApp({
             template: '#app-template',
             data() {
@@ -2066,7 +2395,7 @@
                     customCostCategories: [], customPayers: [], customPaymentMethods: [], customTransits: [],
                     tempCustomCostCategory: '', tempCustomPayer: '', tempCustomPaymentMethod: '', tempCustomTransit: '',
                     
-                    newTagType: '必吃', newTagText: '',
+                    newTagType: '必吃', newTagText: '', newCheckKind: '必吃', newCheckText: '', checklistKinds: ['必吃', '必買', '必拍', '必做'],
                     newLinkTitle: '', newLinkUrl: '',
                     activePhotoIndex: 0,
                     
@@ -2077,13 +2406,15 @@
                     editingIconCategoryIndex: -1, activeTodoCategoryIndex: -1, activeTodoSubcategoryIndex: -1,
                     newCategoryIcon: 'fas fa-folder', newCategoryName: '', newSubcategoryName: '',
                     
-                    exchangeRateJPYtoTWD: 0.21,
+                    exchangeRateJPYtoTWD: 0.21, rateUpdatedAt: 0, rateSourceDate: '', isRateLoading: false, convJPY: '1,000', convTWD: '',
                     expenseFilterType: 'category',
                     
                     
                     routeActiveDay: 0,
                     isMapLoading: false, mapFailedSpots: [], mapFilterDay: -1, mapError: '', mapProgress: '', mapEmpty: false, mapStops: [],
-                    mapColors: ['#03045E', '#023E8A', '#0077B6', '#0096C7', '#00B4D8', '#48CAE4', '#90E0EF', '#ADE8F4', '#CAF0F8'],
+                    mapColors: ['#023E8A', '#48CAE4', '#0077B6', '#90E0EF', '#0096C7', '#ADE8F4', '#00B4D8', '#CAF0F8', '#0369A1', '#67D3EB', '#0E7490', '#BAE6FD'],
+                    themePresets: THEME_PRESETS,
+                    settings: { themeId: 'ocean', overrides: {}, savedThemes: [] },
                     
                     iconList: [
                         'fas fa-suitcase', 'fas fa-passport', 'fas fa-ticket-alt', 'fas fa-plane', 'fas fa-train',
@@ -2105,7 +2436,13 @@
                     sortableInstances: {},
                     isDraggingSpot: false, justDraggedSpot: false,
                     showExpenseDetail: false, expenseDetailKey: '',
-                    showSwapModal: false, toastMsg: '', filePreview: null, filePreviewZoom: 1, filePreviewStatus: '',
+                    showSwapModal: false, toastMsg: '',
+                    konbiniBrands: ['7-11', '全家', 'LAWSON'],
+                    konbiniSuggestions: [
+                        { name: '炸雞塊 Karaage-kun', brand: 'LAWSON' }, { name: '炸雞 Famichiki', brand: '全家' }, { name: '蛋沙拉三明治', brand: '7-11' },
+                        { name: '金色吐司', brand: '7-11' }, { name: 'Uchi Café 瑞士捲', brand: 'LAWSON' }, { name: '布丁', brand: '' },
+                        { name: '飯糰', brand: '' }, { name: '關東煮', brand: '' }, { name: '霜淇淋', brand: '' }, { name: '期間限定零食', brand: '' }
+                    ], filePreview: null, filePreviewZoom: 1, filePreviewStatus: '',
                     transitMethodOptions: [
                         { v: '飛機', icon: 'fa-plane' }, { v: '新幹線', icon: 'fa-train' }, { v: 'JR', icon: 'fa-train' }, { v: '地鐵', icon: 'fa-train-subway' },
                         { v: '私鐵', icon: 'fa-train-tram' }, { v: '巴士', icon: 'fa-bus' }, { v: '計程車', icon: 'fa-taxi' }, { v: '步行', icon: 'fa-person-walking' }
@@ -2167,6 +2504,35 @@
                     return Math.round(this.filteredTotalTWD + (this.filteredTotalJPY * this.exchangeRateJPYtoTWD));
                 },
 
+                currentTheme() {
+                    return buildTheme(this.themeSource(this.settings.themeId));
+                },
+                themeModified() {
+                    return !!(this.settings.overrides && this.settings.overrides[this.settings.themeId]);
+                },
+                isPresetTheme() { return THEME_PRESETS.some(x => x.id === this.settings.themeId); },
+                activeThemeName() { return this.currentTheme.name; },
+                rateTimeLabel() {
+                    if (this.isRateLoading) return '更新中…';
+                    if (!this.rateUpdatedAt) return '尚未更新';
+                    const d = new Date(this.rateUpdatedAt);
+                    const mins = Math.floor((this.nowTick - this.rateUpdatedAt) / 60000);
+                    const hm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+                    return mins < 1 ? '剛剛更新' : (mins < 60 ? `${mins} 分鐘前更新` : `${hm} 更新`);
+                },
+                checkPlaceholder() {
+                    return { '必吃': '例：淺草炸肉餅、季節限定甜點', '必買': '例：限定文創商品、御守', '必拍': '例：正門鳥居、夜景機位', '必做': '例：蓋紀念章、求御朱印' }[this.newCheckKind] || '輸入項目';
+                },
+                checklistSuggestions() {
+                    const t = this.selectedSpot && this.selectedSpot.type;
+                    if (t === 'konbini') return this.konbiniSuggestions.map(x => ({ kind: '必買', text: x.name, brand: x.brand }));
+                    const map = {
+                        spot: [['必拍', '經典打卡機位'], ['必拍', '夜景'], ['必買', '限定文創商品'], ['必買', '御守'], ['必做', '蓋紀念章'], ['必做', '求御朱印']],
+                        food: [['必吃', '招牌菜'], ['必吃', '季節限定'], ['必做', '提早排隊／訂位'], ['必買', '伴手禮']],
+                        shopping: [['必買', '限定商品'], ['必買', '伴手禮'], ['必做', '辦理退稅'], ['必做', '集點／會員卡']]
+                    };
+                    return (map[t] || []).map(([kind, text]) => ({ kind, text, brand: '' }));
+                },
                 todoTotals() {
                     let done = 0, total = 0;
                     this.todoCategories.forEach(c => (c.subcategories || []).forEach(s => (s.items || []).forEach(i => { total++; if (i.done) done++; })));
@@ -2235,7 +2601,7 @@
                     return { category: '大類別', payer: '付款人', method: '付款方式', tag: '花費標籤' }[this.expenseFilterType] || '';
                 },
                 expensePalette() {
-                    return ['#1E4E79', '#5E9CC8', '#256694', '#8ABAD4', '#3F7FB0', '#B7D4E8', '#1A7DA1', '#6E99B5', '#2F8FBF', '#9CC3DD'];
+                    return this.currentTheme.palette;
                 },
                 routeSpotsForDay() {
                     if (!this.itinerary[this.routeActiveDay] || !this.itinerary[this.routeActiveDay].spots) return [];
@@ -2271,6 +2637,7 @@
                 tripInfo: { handler() { this.autoSave(); }, deep: true },
                 itinerary: { handler() { this.autoSave(); }, deep: true },
                 todoCategories: { handler() { this.autoSave(); }, deep: true },
+                settings: { handler() { this.applyTheme(); this.autoSave(); }, deep: true },
                 customCostCategories: { handler() { this.autoSave(); }, deep: true },
                 customPayers: { handler() { this.autoSave(); }, deep: true },
                 customPaymentMethods: { handler() { this.autoSave(); }, deep: true },
@@ -2278,6 +2645,9 @@
                 appState() { this.autoSave(); },
                 isGenerated() { this.autoSave(); },
                 
+                'selectedSpot.type': function(n) {
+                    if (this.spotModalMode !== 'view' && !this.newCheckText) this.newCheckKind = this.defaultKindFor(n);
+                },
                 'tripInfo.startDate': function(n, o) {
                     const f = this.tripInfo.flights && this.tripInfo.flights[0];
                     if (f && (!f.date || f.date === o)) f.date = n;
@@ -2323,10 +2693,15 @@
                 }
             },
             async mounted() {
-                fetch('https://open.er-api.com/v6/latest/JPY')
-                    .then(res => res.json())
-                    .then(data => { if(data && data.rates && data.rates.TWD) this.exchangeRateJPYtoTWD = data.rates.TWD; })
-                    .catch(e => console.log('Exchange rate fetch failed', e));
+                // 匯率：先用上次存下的，再視情況更新；之後每小時自動更新一次
+                try {
+                    const cached = JSON.parse(localStorage.getItem('tripApp_rate') || 'null');
+                    if (cached && cached.rate > 0) { this.exchangeRateJPYtoTWD = cached.rate; this.rateUpdatedAt = cached.at; this.rateSourceDate = cached.date || ''; }
+                } catch (e) {}
+                this.onConvInput('jpy', this.convJPY);
+                if (Date.now() - this.rateUpdatedAt > 3600000) this.fetchRate();
+                setInterval(() => { if (Date.now() - this.rateUpdatedAt > 3600000) this.fetchRate(); }, 5 * 60000);
+                document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && Date.now() - this.rateUpdatedAt > 3600000) this.fetchRate(); });
 
                 // 離開 App / 切到背景時，立刻把還沒存的變更存起來（iPhone 可能直接關掉 App）
                 const flush = () => { if (this.isStateLoaded && this.saveTimeout) { clearTimeout(this.saveTimeout); this.saveTimeout = null; this.saveNow(); } };
@@ -2341,6 +2716,7 @@
                 if (window.__PRELOADED_STATE__) {
                     this.restoreState(window.__PRELOADED_STATE__);
                     this.isStateLoaded = true;
+                    this.applyTheme();
                     return;
                 }
                 
@@ -2358,6 +2734,7 @@
                 } catch (e) {
                     console.warn("DB Load failed", e);
                 }
+                this.applyTheme();
                 // 讀取完成後才開始自動儲存，避免空白資料蓋掉原本的行程
                 this.$nextTick(() => { this.isStateLoaded = true; });
             },
@@ -2379,6 +2756,17 @@
                         this.customPayers = data.customPayers || [];
                         this.customPaymentMethods = data.customPaymentMethods || [];
                         this.customTransits = data.customTransits || [];
+                        if (data.settings) {
+                            const st = Object.assign({ themeId: 'ocean', overrides: {}, savedThemes: [] }, data.settings);
+                            // 舊版「自訂顏色」轉成我的配色
+                            if (st.themeId === 'custom' && st.custom && st.custom.accent) {
+                                const t = { id: 'my-custom', name: '我的自訂', colors: gen8(shadeHex(st.custom.accent, st.custom.shade || 0)), bg: st.custom.bg || '#F4F6F8', accentIdx: 2 };
+                                st.savedThemes = (st.savedThemes || []).filter(x => x.id !== 'my-custom').concat([t]); st.themeId = 'my-custom';
+                            }
+                            delete st.custom;
+                            if (!THEME_PRESETS.some(x => x.id === st.themeId) && !st.savedThemes.some(x => x.id === st.themeId)) st.themeId = 'ocean';
+                            this.settings = st;
+                        }
                         this.appState = data.appState || 'setup';
                         this.isGenerated = data.isGenerated || false;
                         if(this.currentTab === 'itinerary') this.$nextTick(() => { this.initSortableItinerary(); });
@@ -2398,7 +2786,7 @@
                             tripInfo: this.tripInfo, itinerary: this.itinerary, todoCategories: this.todoCategories,
                             appState: this.appState === 'setup' && this.isGenerated ? 'main' : this.appState, isGenerated: this.isGenerated,
                             customCostCategories: this.customCostCategories, customPayers: this.customPayers,
-                            customPaymentMethods: this.customPaymentMethods, customTransits: this.customTransits
+                            customPaymentMethods: this.customPaymentMethods, customTransits: this.customTransits, settings: this.settings
                         }));
                         await saveToDB(DB_KEY, dataToSave);
                     } catch (err) { console.warn('save failed', err); }
@@ -2875,6 +3263,7 @@
                         (day.spots || []).forEach(spot => {
                             if (!spot.id || seen.has(spot.id)) spot.id = this.makeSpotId();
                             seen.add(spot.id);
+                            this.normalizeChecklist(spot);
                         });
                     });
                 },
@@ -3134,7 +3523,7 @@
                             if (c) { spot.lat = c.lat; spot.lng = c.lng; spot.geoSource = 'url'; }
                             const has = spot.lat && spot.lng;
                             pts.push({ dayIdx: d, spotIdx: s, num: num++, name: spot.name || spot.location, dayLabel: day.label,
-                                       color: this.mapColors[d % this.mapColors.length],
+                                       color: this.getDayColor(d),
                                        status: has ? (spot.geoSource === 'url' ? 'exact' : 'approx') : 'pending',
                                        lat: has ? Number(spot.lat) : null, lng: has ? Number(spot.lng) : null });
                         });
@@ -3149,13 +3538,13 @@
                     ready.forEach(p => { (byDay[p.dayIdx] = byDay[p.dayIdx] || []).push(p); });
                     Object.keys(byDay).forEach(k => {
                         const dayPts = byDay[k].sort((a, b) => a.num - b.num);
-                        if (dayPts.length > 1) L.polyline(dayPts.map(p => [p.lat, p.lng]), { color: dayPts[0].color, weight: 2.5, dashArray: '6, 6', opacity: 0.85 }).addTo(_leafletLayer);
+                        if (dayPts.length > 1) L.polyline(dayPts.map(p => [p.lat, p.lng]), { color: inkOn(dayPts[0].color) === '#fff' ? dayPts[0].color : '#0096C7', weight: 3, dashArray: '6, 6', opacity: 0.9 }).addTo(_leafletLayer);
                     });
                     ready.forEach(p => {
                         const approx = p.status === 'approx';
                         const html = approx
                             ? `<div style="background:#fff;width:24px;height:24px;border-radius:50%;color:${p.color};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;border:2px dashed ${p.color};box-shadow:0 2px 4px rgba(0,0,0,.25);font-family:sans-serif;">${p.num}</div>`
-                            : `<div style="background:${p.color};width:24px;height:24px;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;border:2px solid #fff;box-shadow:0 2px 4px rgba(0,0,0,.3);font-family:sans-serif;">${p.num}</div>`;
+                            : `<div style="background:${p.color};width:24px;height:24px;border-radius:50%;color:${inkOn(p.color)};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;border:2px solid #fff;box-shadow:0 2px 4px rgba(0,0,0,.3);font-family:sans-serif;">${p.num}</div>`;
                         L.marker([p.lat, p.lng], { icon: L.divIcon({ html, className: 'leaflet-custom-marker', iconSize: [24, 24], iconAnchor: [12, 12] }) })
                          .bindPopup(`<b>${this.escapeHtml(p.dayLabel)}</b><br>${this.escapeHtml(p.name)}${approx ? '<br><span style="color:#94a3b8;font-size:11px;">推測位置，可能不準</span>' : ''}`)
                          .addTo(_leafletLayer);
@@ -3357,13 +3746,13 @@
                     return spot.currency === 'JPY' ? Number(spot.cost) * this.exchangeRateJPYtoTWD : Number(spot.cost);
                 },
                 getExpenseCategory(spot) {
-                    return spot.costCategory || (spot.type === 'hotel' ? '住宿' : (spot.type === 'transit' ? '交通' : (spot.type === 'food' ? '食物' : (spot.type === 'shopping' ? '購物' : '未分類'))));
+                    return spot.costCategory || (spot.type === 'hotel' ? '住宿' : (spot.type === 'transit' ? '交通' : (spot.type === 'food' ? '食物' : (spot.type === 'shopping' ? '購物' : (spot.type === 'konbini' ? '超商' : '未分類')))));
                 },
                 getExpenseKey(spot) {
                     if (this.expenseFilterType === 'category') return this.getExpenseCategory(spot);
                     if (this.expenseFilterType === 'payer') return spot.payer || '未設定';
                     if (this.expenseFilterType === 'method') return spot.paymentMethod || '現金';
-                    if (this.expenseFilterType === 'tag') return spot.tags && spot.tags.length > 0 ? spot.tags[0].type : '無標籤';
+                    if (this.expenseFilterType === 'tag') return spot.checklist && spot.checklist.length > 0 ? spot.checklist[0].kind : (spot.tags && spot.tags.length > 0 ? spot.tags[0].type : '無標籤');
                     return '未分類';
                 },
                 formatPct(p) {
@@ -3411,15 +3800,15 @@
                             minAngle: 4, avoidLabelOverlap: true, percentPrecision: 1,
                             itemStyle: { borderRadius: 4, borderColor: '#fff', borderWidth: 2 },
                             label: {
-                                show: true, position: 'outside', alignTo: 'none', edgeDistance: 2,
-                                formatter: (p) => `{n|${p.name}}\n{v|NTD$${this.formatCurrency(p.value)}}\n{p|(${this.formatPct(p.data.pct)})}`,
+                                show: true, position: 'outside', alignTo: 'labelLine', edgeDistance: 2, minMargin: 6, bleedMargin: 0, overflow: 'none',
+                                formatter: (p) => `{n|${p.name}}\n{v|NT$${this.formatCurrency(p.value)}}\n{p|(${this.formatPct(p.data.pct)})}`,
                                 rich: {
                                     n: { fontSize: 11, fontWeight: 'bold', color: '#1e293b', lineHeight: 14, fontFamily: 'Noto Sans TC, sans-serif' },
-                                    v: { fontSize: 10, fontWeight: 'bold', color: '#475569', lineHeight: 13 },
+                                    v: { fontSize: 10, fontWeight: 'bold', color: '#475569', lineHeight: 13, fontFamily: 'Noto Sans TC, sans-serif' },
                                     p: { fontSize: 10, fontWeight: 'bold', color: '#94a3b8', lineHeight: 13 }
                                 }
                             },
-                            labelLine: { show: true, length: 5, length2: 4, smooth: false, lineStyle: { color: '#cbd5e1' } },
+                            labelLine: { show: true, length: 12, length2: 4, smooth: false, lineStyle: { color: '#cbd5e1' } },
                             labelLayout: { moveOverlap: 'shiftY', hideOverlap: false },
                             emphasis: { scale: true, scaleSize: 5 },
                             data: rows.map(r => ({ name: r.name, value: r.value, pct: r.pct, itemStyle: { color: r.color } }))
@@ -3438,6 +3827,9 @@
 
                 // --- Overview Timeline ---
                 getDayPreviewSpots(day) {
+                    return (day.spots || []).filter(s => s.type !== 'transit');
+                },
+                getDayPreviewSpotsLegacy(day) {
                     const list = (day.spots || []).filter(s => s.type !== 'transit');
                     // 今天：預覽的 3 個行程以「現在這個行程」為中心
                     const cur = this.currentSpotOf(day);
@@ -3464,9 +3856,208 @@
                 isCurrentSpot(day, sp) {
                     return this.currentSpotOf(day) === sp;
                 },
+                inkOn(hex) { return inkOn(hex); },
+                // --- 匯率 ---
+                async fetchRate(manual) {
+                    if (this.isRateLoading) return;
+                    this.isRateLoading = true;
+                    const sources = [
+                        async () => {
+                            const r = await fetch('https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/jpy.json', { cache: 'no-store' });
+                            const d = await r.json(); return { rate: d.jpy && d.jpy.twd, date: d.date };
+                        },
+                        async () => {
+                            const r = await fetch('https://latest.currency-api.pages.dev/v1/currencies/jpy.json', { cache: 'no-store' });
+                            const d = await r.json(); return { rate: d.jpy && d.jpy.twd, date: d.date };
+                        },
+                        async () => {
+                            const r = await fetch('https://open.er-api.com/v6/latest/JPY', { cache: 'no-store' });
+                            const d = await r.json(); return { rate: d.rates && d.rates.TWD, date: d.time_last_update_utc };
+                        }
+                    ];
+                    let ok = false;
+                    for (const src of sources) {
+                        try {
+                            const { rate, date } = await src();
+                            if (rate > 0) {
+                                this.exchangeRateJPYtoTWD = rate; this.rateUpdatedAt = Date.now(); this.rateSourceDate = date || '';
+                                try { localStorage.setItem('tripApp_rate', JSON.stringify({ rate, at: this.rateUpdatedAt, date })); } catch (e) {}
+                                ok = true; break;
+                            }
+                        } catch (e) {}
+                    }
+                    this.isRateLoading = false;
+                    this.nowTick = Date.now();
+                    this.onConvInput('jpy', this.convJPY);
+                    if (manual && !ok) this.showToast('目前無法更新匯率，先使用上次的匯率');
+                },
+                onConvInput(which, raw) {
+                    const clean = String(raw || '').replace(/[^\d.]/g, '');
+                    const num = parseFloat(clean);
+                    const fmt = (n, d) => n.toLocaleString('en-US', { maximumFractionDigits: d });
+                    const keepTyping = (txt) => { const [i, f] = txt.split('.'); const iv = i ? Number(i).toLocaleString('en-US') : (txt.startsWith('.') ? '0' : ''); return f !== undefined ? `${iv}.${f}` : iv; };
+                    if (which === 'jpy') {
+                        this.convJPY = keepTyping(clean);
+                        this.convTWD = isNaN(num) ? '' : fmt(num * this.exchangeRateJPYtoTWD, 0);
+                    } else {
+                        this.convTWD = keepTyping(clean);
+                        this.convJPY = isNaN(num) ? '' : fmt(num / this.exchangeRateJPYtoTWD, 0);
+                    }
+                },
+                // --- 清單（必吃・必買・必拍・必做；取代舊的標籤與超商清單） ---
+                normalizeChecklist(spot) {
+                    if (!spot || spot.type === 'transit') { if (spot && !Array.isArray(spot.checklist)) spot.checklist = []; return; }
+                    if (!Array.isArray(spot.checklist)) {
+                        spot.checklist = [];
+                        (spot.tags || []).forEach(t => spot.checklist.push({ kind: t.type || '必做', text: t.text || '', done: false, price: '', brand: '' }));
+                        (spot.buyList || []).forEach(b => spot.checklist.push({ kind: '必買', text: b.name || '', done: !!b.done, price: b.price || '', brand: b.brand || '' }));
+                    }
+                    spot.checklist = this.sortChecklist(spot.checklist);
+                },
+                kindOrder(kind) { const i = this.checklistKinds.indexOf(kind); return i < 0 ? 99 : i; },
+                sortChecklist(list) {
+                    return (list || []).map((x, i) => ({ x, i })).sort((a, b) => (this.kindOrder(a.x.kind) - this.kindOrder(b.x.kind)) || (a.i - b.i)).map(o => o.x);
+                },
+                sortedChecklist(spot) { return this.sortChecklist(spot.checklist); },
+                defaultKindFor(type) { return { food: '必吃', shopping: '必買', konbini: '必買', spot: '必拍' }[type] || '必做'; },
+                addCheckItem(text, kind, brand) {
+                    const t = (text != null ? text : this.newCheckText).trim();
+                    if (!t) return;
+                    if (!Array.isArray(this.selectedSpot.checklist)) this.selectedSpot.checklist = [];
+                    this.selectedSpot.checklist.push({ kind: kind || this.newCheckKind, text: t, done: false, price: '', brand: brand || '' });
+                    this.selectedSpot.checklist = this.sortChecklist(this.selectedSpot.checklist);
+                    if (text == null) this.newCheckText = '';
+                },
+                cycleKind(it) {
+                    const k = this.checklistKinds, i = k.indexOf(it.kind);
+                    it.kind = k[(i + 1) % k.length];
+                },
+                // 清單類型顏色：跟 Day 1、Day 2… 一樣，依順序由深到淺（必吃 → 必買 → 必拍 → 必做）
+                kindColor(kind) {
+                    const i = this.checklistKinds.indexOf(kind);
+                    const pos = i < 0 ? this.checklistKinds.length : i;
+                    return dayShade(this.currentTheme.colors, Math.min(1, pos / this.checklistKinds.length));
+                },
+                relLumOf(c) { return relLum(c); },
+                onColor(c) { return relLum(c) > 0.4 ? mixHex(c, '#000000', 0.72) : '#FFFFFF'; },
+                // 底色用比較明顯的淡色，低彩度主題也看得出區塊
+                kindSoft(kind) { const c = this.kindColor(kind); return mixHex(c, '#FFFFFF', relLum(c) > 0.35 ? 0.62 : 0.72); },
+                kindInk(kind) { const c = this.kindColor(kind); return mixHex(c, '#000000', relLum(c) > 0.4 ? 0.55 : 0.3); },
+                kindIcon(kind) { return { '必吃': 'fa-utensils', '必買': 'fa-bag-shopping', '必拍': 'fa-camera', '必做': 'fa-star' }[kind] || 'fa-circle-check'; },
+                kindChipStyle(kind) {
+                    const c = this.kindColor(kind);
+                    return { backgroundColor: mixHex(c, '#FFFFFF', 0.8), color: mixHex(c, '#000000', relLum(c) > 0.4 ? 0.55 : 0.3) };
+                },
+                typeChipStyle(type) {
+                    const c = this.getSpotColor(type);
+                    return { backgroundColor: mixHex(c, '#FFFFFF', 0.8), color: mixHex(c, '#000000', relLum(c) > 0.4 ? 0.55 : 0.3) };
+                },
+                checklistGroups(spot) {
+                    const order = this.checklistKinds.slice();
+                    (spot.checklist || []).forEach(x => { if (!order.includes(x.kind)) order.push(x.kind); });
+                    return order.map(kind => ({ kind, items: (spot.checklist || []).map((item, idx) => ({ item, idx })).filter(x => x.item.kind === kind) })).filter(g => g.items.length);
+                },
+                checklistTotal(spot) {
+                    return (spot.checklist || []).reduce((t, x) => t + (parseFloat(String(x.price || '').replace(/[^\d.]/g, '')) || 0), 0);
+                },
+                toggleCheckInView(idx) {
+                    const cur = this.selectedSpot.checklist && this.selectedSpot.checklist[idx];
+                    if (!cur) return;
+                    cur.done = !cur.done;
+                    const day = this.itinerary[this.activeDay];
+                    const spot = day && day.spots[this.selectedSpotIndex];
+                    if (spot && spot !== this.selectedSpot && spot.checklist && spot.checklist[idx]) spot.checklist[idx].done = cur.done;
+                },
+                costMain(spot) {
+                    return spot.currency === 'JPY' ? '¥' + this.formatCurrency(spot.cost) : 'NT$' + this.formatCurrency(spot.cost);
+                },
+                costSub(spot) {
+                    return spot.currency === 'JPY' ? '≈ NT$' + this.formatCurrency(Math.round(Number(spot.cost) * this.exchangeRateJPYtoTWD)) : '';
+                },
+                // --- 超商必買 ---
+                konbiniTotal(spot) { return this.checklistTotal(spot); },
+                addKonbiniItem(name, brand) {
+                    if (!Array.isArray(this.selectedSpot.buyList)) this.selectedSpot.buyList = [];
+                    this.selectedSpot.buyList.push({ name: name || '', brand: brand || '', price: '', done: false });
+                },
+                toggleKonbiniInView(kIdx) {
+                    // 詳細頁勾選：同時更新畫面與行程資料
+                    const cur = this.selectedSpot.buyList && this.selectedSpot.buyList[kIdx];
+                    if (!cur) return;
+                    cur.done = !cur.done;
+                    const day = this.itinerary[this.activeDay];
+                    const spot = day && day.spots[this.selectedSpotIndex];
+                    if (spot && spot !== this.selectedSpot && spot.buyList && spot.buyList[kIdx]) spot.buyList[kIdx].done = cur.done;
+                },
+                buildTheme(t) { return buildTheme(t); },
+                shadeHex(h, s) { return shadeHex(h, s); },
+                setTheme(id) { this.settings.themeId = id; },
+                // 取得某個主題目前的設定（預設主題 + 你改過的部分）
+                themeSource(id) {
+                    const ov = (this.settings.overrides || {})[id];
+                    const preset = THEME_PRESETS.find(x => x.id === id);
+                    if (preset) return ov ? Object.assign({}, preset, ov, { edited: true }) : preset;
+                    const saved = (this.settings.savedThemes || []).find(x => x.id === id);
+                    if (saved) return Object.assign({ edited: true }, saved, saved.colors ? {} : { colors: gen8(saved.accent || '#1E4E79') });
+                    return THEME_PRESETS[0];
+                },
+                // 要修改時：預設主題會先複製一份到「你的修改」，隨時可以恢復
+                editableTheme() {
+                    const id = this.settings.themeId;
+                    if (THEME_PRESETS.some(x => x.id === id)) {
+                        if (!this.settings.overrides) this.settings.overrides = {};
+                        if (!this.settings.overrides[id]) {
+                            const T = buildTheme(THEME_PRESETS.find(x => x.id === id));
+                            this.settings.overrides[id] = { colors: T.colors.slice(), bg: T.bg, accentIdx: T.accentIdx >= 0 ? T.accentIdx : null, accent: T.accent };
+                        }
+                        return this.settings.overrides[id];
+                    }
+                    const saved = this.settings.savedThemes.find(x => x.id === id);
+                    if (saved && !saved.colors) saved.colors = gen8(saved.accent || '#1E4E79');
+                    return saved;
+                },
+                setThemeColor(i, hex) { const e = this.editableTheme(); if (e) { const c = e.colors.slice(); c[i] = hex.toUpperCase(); e.colors = c; } },
+                setThemeBg(hex) { const e = this.editableTheme(); if (e) e.bg = hex.toUpperCase(); },
+                setAccentIdx(i) { const e = this.editableTheme(); if (e) { e.accentIdx = i; e.accent = null; } },
+                generateFromColor(hex) {
+                    const e = this.editableTheme(); if (!e) return;
+                    const g = gen8Keep(hex); e.colors = g.colors; e.accentIdx = g.idx; e.accent = null;
+                },
+                resetTheme() {
+                    if (this.settings.overrides && this.settings.overrides[this.settings.themeId]) {
+                        const o = Object.assign({}, this.settings.overrides); delete o[this.settings.themeId]; this.settings.overrides = o;
+                        this.showToast('已恢復成原本的配色');
+                    }
+                },
+                saveCustomTheme() {
+                    const name = (prompt('幫這組配色取個名字：', this.currentTheme.name + '（我的版本）') || '').trim();
+                    if (!name) return;
+                    const T = this.currentTheme;
+                    const t = { id: 'my-' + Date.now(), name, colors: T.colors.slice(), bg: T.bg, accentIdx: T.accentIdx >= 0 ? T.accentIdx : 1 };
+                    this.settings.savedThemes.push(t);
+                    this.settings.themeId = t.id;
+                    this.showToast('已收藏「' + name + '」');
+                },
+                removeSavedTheme(id) {
+                    if (!confirm('刪除這組配色？')) return;
+                    this.settings.savedThemes = this.settings.savedThemes.filter(t => t.id !== id);
+                    if (this.settings.themeId === id) this.settings.themeId = 'ocean';
+                },
+                applyTheme() {
+                    const T = this.currentTheme;
+                    const el = document.getElementById('theme-style');
+                    if (el) el.textContent = themeCss(T);
+                    const meta = document.querySelector('meta[name="theme-color"]');
+                    if (meta) meta.setAttribute('content', T.bg);
+                    if (this.currentTab === 'info') setTimeout(() => this.renderMap(), 50);
+                    if (this.currentTab === 'expense') this.$nextTick(() => this.updateExpenseChart());
+                },
+                getDayColorLegacy(idx) { return this.getDayColor(idx); },
                 getDayColor(idx) {
                     // 每日重點行程時間軸：統一藍色系，深淺交替
-                    return this.mapColors[idx % this.mapColors.length];   // 與全行程地圖同一組藍色
+                    // 依天數由深到淺排列（與全行程地圖同一組顏色）
+                    const n = Math.max(1, this.itinerary.length);
+                    return dayShade(this.currentTheme.colors, n === 1 ? 0 : idx / (n - 1));
                 },
                 // --- 24 小時制時間輸入 ---
                 formatTimeTyping(v) {
@@ -3511,11 +4102,11 @@
 
                 // --- Formatting & Helpers ---
                 getSpotColor(type) {
-                    const c = { food: '#87ceeb', spot: '#256694', transit: '#6E99B5', hotel: '#1A7DA1', shopping: '#8ABAD4' };
-                    return c[type] || '#256694';
+                    const c = this.currentTheme.spot;
+                    return c[type] || c.spot;
                 },
                 getSpotTypeName(type) {
-                    const n = { food: '美食', spot: '景點', transit: '交通', hotel: '住宿', shopping: '購物' };
+                    const n = { food: '美食', spot: '景點', transit: '交通', hotel: '住宿', shopping: '購物', konbini: '超商' };
                     return n[type] || '景點';
                 },
                 getTagColor(type) {
@@ -3682,12 +4273,15 @@
                 },
                 resetPendingInputs() {
                     this.newLinkTitle = ''; this.newLinkUrl = ''; this.newTagText = ''; this.tempCustomTransit = '';
+                    this.newCheckText = '';
+                    this.normalizeChecklist(this.selectedSpot);
+                    this.newCheckKind = this.defaultKindFor(this.selectedSpot && this.selectedSpot.type);
                 },
                 submitSpot() {
                     if(!this.selectedSpot.name) return alert('請輸入行程名稱！');
                     // 有打字但忘了按「＋」的連結、標籤，存檔時一併加入
                     if (this.newLinkUrl.trim()) this.addLink(true);
-                    if (this.newTagText.trim()) this.addTag();
+                    if (this.newCheckText.trim()) this.addCheckItem();
                     if (this.selectedSpot.transitMethod === '自訂') this.selectedSpot.transitMethod = this.tempCustomTransit.trim() || '地鐵';
                     // 鐵道：同步第一段/最後一段到舊欄位（匯出等功能會用到）
                     if (this.selectedSpot.type === 'transit' && this.transitKind(this.selectedSpot.transitMethod) === 'rail') {
@@ -3696,6 +4290,13 @@
                         if (legs.length) { this.selectedSpot.depAirport = legs[0].from; this.selectedSpot.arrAirport = legs[legs.length - 1].to; }
                     }
                     if (this.selectedSpot.seats) this.selectedSpot.seats = this.selectedSpot.seats.filter((x, i) => x.name || x.seat || i === 0);
+                    this.selectedSpot.checklist = this.sortChecklist((this.selectedSpot.checklist || []).filter(x => (x.text || '').trim()));
+                    this.selectedSpot.tags = this.selectedSpot.checklist.map(x => ({ type: x.kind, text: x.text }));   // 舊欄位同步（匯出用）
+                    delete this.selectedSpot.buyList;
+                    if (this.selectedSpot.type === 'konbini') {
+                        const tot = this.checklistTotal(this.selectedSpot);
+                        if (tot && !Number(this.selectedSpot.cost)) { this.selectedSpot.cost = tot; this.selectedSpot.currency = 'JPY'; }
+                    }
                     if (this.selectedSpot.type === 'hotel' && this.selectedSpot.checkInDate && this.selectedSpot.checkOutDate && this.selectedSpot.checkOutDate <= this.selectedSpot.checkInDate) {
                         return alert('退房日期要晚於入住日期喔！');
                     }
@@ -3960,7 +4561,7 @@
                                 if(spot.warning) md += `  - ⚠️ 注意：${spot.warning}\n`;
                                 if(spot.desc) md += `  - 📝 筆記：${spot.desc.replace(/\n/g, ' ')}\n`;
                                 if(spot.tags && spot.tags.length) {
-                                    spot.tags.forEach(t => md += `  - 🏷️ ${t.type}：${t.text}\n`);
+                                    (spot.checklist && spot.checklist.length ? spot.checklist.map(c => ({ type: c.kind, text: c.text + (c.done ? ' ✅' : '') })) : spot.tags).forEach(t => md += `  - ${t.type}：${t.text}\n`);
                                 }
                                 if(spot.links && spot.links.length) {
                                     spot.links.forEach(l => md += `  - 🔗 [${l.title}](${l.url})\n`);
@@ -3979,7 +4580,7 @@
                         app: 'trip-app', backupVersion: 1, exportedAt: new Date().toISOString(),
                         tripInfo: this.tripInfo, itinerary: this.itinerary, todoCategories: this.todoCategories,
                         customCostCategories: this.customCostCategories, customPayers: this.customPayers,
-                        customPaymentMethods: this.customPaymentMethods, customTransits: this.customTransits,
+                        customPaymentMethods: this.customPaymentMethods, customTransits: this.customTransits, settings: this.settings,
                         appState: 'main', isGenerated: this.isGenerated
                     };
                     const d = new Date();
@@ -4019,7 +4620,7 @@
                 exportToHTML() {
                     const stateSnapshot = {
                         tripInfo: this.tripInfo, itinerary: this.itinerary, todoCategories: this.todoCategories,
-                        customCostCategories: this.customCostCategories, customPayers: this.customPayers, customPaymentMethods: this.customPaymentMethods, customTransits: this.customTransits,
+                        customCostCategories: this.customCostCategories, customPayers: this.customPayers, customPaymentMethods: this.customPaymentMethods, customTransits: this.customTransits, settings: this.settings,
                         appState: this.appState, isGenerated: this.isGenerated
                     };
                     const stateJSON = JSON.stringify(stateSnapshot);
