@@ -205,7 +205,17 @@
                                 <div class="grid grid-cols-5 gap-2">
                                     <div class="col-span-3">
                                         <label class="block text-[10px] font-bold text-[#94a3b8] mb-1 tracking-widest">航空公司</label>
-                                        <input type="text" v-model="fl.airline" list="airline-list" placeholder="例：中華航空" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold text-[#1e293b] outline-none focus:border-brand">
+                                        <div class="relative">
+                                            <select :value="airlineSelectValue(fl.airline, fl._customAirline)" @change="onAirlineSelect(fl, $event.target.value)" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold text-[#1e293b] outline-none focus:border-brand h-[34px] appearance-none pr-7">
+                                                <option value="">選擇航空公司</option>
+                                                <optgroup v-for="grp in airlineGroups" :key="'ag'+grp.g" :label="grp.g">
+                                                    <option v-for="n in grp.list" :key="n" :value="n">{{ n }}</option>
+                                                </optgroup>
+                                                <option value="__other">其他（自行輸入）</option>
+                                            </select>
+                                            <i class="fa-solid fa-chevron-down text-[9px] text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                                        </div>
+                                        <input v-if="fl._customAirline || isCustomAirline(fl.airline)" type="text" v-model="fl.airline" placeholder="輸入航空公司名稱" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold text-[#1e293b] outline-none focus:border-brand h-[34px] mt-1.5">
                                     </div>
                                     <div class="col-span-2">
                                         <label class="block text-[10px] font-bold text-[#94a3b8] mb-1 tracking-widest">航班編號</label>
@@ -319,7 +329,7 @@
                     </button>
                 </header>
 
-                <main id="main-scroll" class="flex-1 overflow-y-auto overflow-x-hidden hide-scrollbar pt-[76px] relative bg-[#F4F6F8]" style="padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));">
+                <main id="main-scroll" class="flex-1 overflow-y-auto overflow-x-hidden hide-scrollbar pt-[76px] relative bg-[#F4F6F8]" style="padding-bottom: calc(68px + env(safe-area-inset-bottom, 0px));">
                     
                     <!-- Tab 1: 行程 (Itinerary) -->
                     <div v-show="currentTab === 'itinerary'" class="animate-fade-in relative min-h-full">
@@ -948,7 +958,7 @@
                 </main>
 
                 <!-- Bottom Navigation Bar -->
-                <nav class="glass-nav fixed bottom-0 w-full max-w-[430px] z-30 px-8 flex justify-between items-start" style="padding-top: 7px; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 2px); min-height: calc(50px + env(safe-area-inset-bottom, 0px));">
+                <nav class="glass-nav fixed bottom-0 w-full max-w-[430px] z-30 px-8 flex justify-between items-start" style="padding-top: 7px; padding-bottom: max(calc(env(safe-area-inset-bottom, 0px) - 10px), 6px);">
                     <button type="button" @click="currentTab = 'itinerary'" class="flex flex-col items-center justify-start w-14 transition-colors" :class="currentTab === 'itinerary' ? 'text-[#1e293b]' : 'text-slate-400'">
                         <i class="fa-solid fa-map-location-dot text-[17px] mb-[3px] transition-transform" :class="{'scale-110': currentTab === 'itinerary'}"></i>
                         <span class="text-[9.5px] font-bold leading-none">行程</span>
@@ -1606,7 +1616,17 @@
                                     <div class="grid grid-cols-2 gap-2">
                                         <div>
                                             <label class="block text-[10px] font-bold text-[#4682b4] mb-1.5">航空公司</label>
-                                            <input type="text" v-model="selectedSpot.airline" list="airline-list-2" placeholder="星宇航空" class="w-full min-w-0 bg-white border border-slate-200 shadow-sm rounded-lg px-3 py-2 text-xs font-bold outline-none">
+                                            <div class="relative">
+                                            <select :value="airlineSelectValue(selectedSpot.airline, selectedSpot._customAirline)" @change="onAirlineSelect(selectedSpot, $event.target.value)" class="w-full min-w-0 bg-white border border-slate-200 shadow-sm rounded-lg px-3 py-2 text-xs font-bold outline-none h-[34px] appearance-none pr-7">
+                                                <option value="">選擇航空公司</option>
+                                                <optgroup v-for="grp in airlineGroups" :key="'ag'+grp.g" :label="grp.g">
+                                                    <option v-for="n in grp.list" :key="n" :value="n">{{ n }}</option>
+                                                </optgroup>
+                                                <option value="__other">其他（自行輸入）</option>
+                                            </select>
+                                            <i class="fa-solid fa-chevron-down text-[9px] text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                                        </div>
+                                        <input v-if="selectedSpot._customAirline || isCustomAirline(selectedSpot.airline)" type="text" v-model="selectedSpot.airline" placeholder="輸入航空公司名稱" class="w-full min-w-0 bg-white border border-slate-200 shadow-sm rounded-lg px-3 py-2 text-xs font-bold outline-none h-[34px] mt-1.5">
                                         </div>
                                         <div>
                                             <label class="block text-[10px] font-bold text-[#4682b4] mb-1.5">航班編號</label>
@@ -2568,7 +2588,7 @@
                     sortableInstances: {},
                     isDraggingSpot: false, justDraggedSpot: false,
                     showExpenseDetail: false, expenseDetailKey: '',
-                    showSwapModal: false, toastMsg: '', showSettleDetail: false,
+                    showSwapModal: false, toastMsg: '', showSettleDetail: false, airlineGroups: AIRLINE_GROUPS,
                     sync: { enabled: false, config: null, code: '', status: 'off', lastAt: 0, error: '', deviceId: '', joining: false }, syncConfigText: '', syncInviteText: '', isApplyingRemote: false,
                     konbiniBrands: ['7-11', '全家', 'LAWSON'],
                     konbiniSuggestions: [
@@ -4256,6 +4276,13 @@
                     this.saveSyncSettings();
                 },
 
+                // --- 航空公司下拉選單 ---
+                isCustomAirline(name) { return !!name && !AIRLINE_GROUPS.some(g => g.list.includes(name)); },
+                airlineSelectValue(name, custom) { if (custom || this.isCustomAirline(name)) return '__other'; return name || ''; },
+                onAirlineSelect(obj, val) {
+                    if (val === '__other') { obj._customAirline = true; if (!this.isCustomAirline(obj.airline)) obj.airline = ''; }
+                    else { obj._customAirline = false; obj.airline = val; }
+                },
                 // --- 墊付 ---
                 onAdvanceToggle() {
                     if (!Array.isArray(this.selectedSpot.advances)) this.selectedSpot.advances = [];
@@ -5207,10 +5234,9 @@
             MNL: ['馬尼拉', 8, 'Manila', '尼諾伊艾奎諾國際機場'], KUL: ['吉隆坡', 8, 'Kuala Lumpur', '吉隆坡國際機場'],
             SGN: ['胡志明市', 7, 'Ho Chi Minh City', '新山一國際機場'], HAN: ['河內', 7, 'Hanoi', '內排國際機場'], DAD: ['峴港', 7, 'Da Nang', '峴港國際機場']
         };
-        const AIRLINES_EN = {
-            '星宇航空': 'STARLUX AIRLINES', '中華航空': 'CHINA AIRLINES', '長榮航空': 'EVA AIR', '國泰航空': 'CATHAY PACIFIC',
-            '台灣虎航': 'TIGERAIR TAIWAN', '樂桃航空': 'PEACH AVIATION', '捷星日本': 'JETSTAR JAPAN', '日本航空': 'JAPAN AIRLINES', '全日空': 'ALL NIPPON AIRWAYS'
-        };
+        // 台灣人常搭的航空公司（下拉選單用，依地區分組）
+        const AIRLINE_GROUPS = [{"g": "台灣", "list": ["中華航空", "長榮航空", "星宇航空", "台灣虎航", "華信航空", "立榮航空"]}, {"g": "日本", "list": ["日本航空", "全日空", "樂桃航空", "捷星日本", "春秋航空日本", "ZIPAIR"]}, {"g": "港澳", "list": ["國泰航空", "香港航空", "香港快運", "澳門航空"]}, {"g": "韓國", "list": ["大韓航空", "韓亞航空", "濟州航空", "德威航空", "真航空", "釜山航空"]}, {"g": "東南亞", "list": ["酷航", "亞洲航空", "新加坡航空", "泰國航空", "泰國獅子航空", "越捷航空", "越南航空", "菲律賓航空", "宿霧太平洋航空", "馬來西亞航空"]}, {"g": "其他", "list": ["聯合航空", "達美航空", "阿聯酋航空", "土耳其航空"]}];
+        const AIRLINES_EN = {"中華航空": "CHINA AIRLINES", "長榮航空": "EVA AIR", "星宇航空": "STARLUX AIRLINES", "台灣虎航": "TIGERAIR TAIWAN", "華信航空": "MANDARIN AIRLINES", "立榮航空": "UNI AIR", "日本航空": "JAPAN AIRLINES", "全日空": "ALL NIPPON AIRWAYS", "樂桃航空": "PEACH AVIATION", "捷星日本": "JETSTAR JAPAN", "春秋航空日本": "SPRING JAPAN", "ZIPAIR": "ZIPAIR TOKYO", "國泰航空": "CATHAY PACIFIC", "香港航空": "HONG KONG AIRLINES", "香港快運": "HK EXPRESS", "澳門航空": "AIR MACAU", "大韓航空": "KOREAN AIR", "韓亞航空": "ASIANA AIRLINES", "濟州航空": "JEJU AIR", "德威航空": "TWAY AIR", "真航空": "JIN AIR", "釜山航空": "AIR BUSAN", "酷航": "SCOOT", "亞洲航空": "AIRASIA", "新加坡航空": "SINGAPORE AIRLINES", "泰國航空": "THAI AIRWAYS", "泰國獅子航空": "THAI LION AIR", "越捷航空": "VIETJET AIR", "越南航空": "VIETNAM AIRLINES", "菲律賓航空": "PHILIPPINE AIRLINES", "宿霧太平洋航空": "CEBU PACIFIC", "馬來西亞航空": "MALAYSIA AIRLINES", "聯合航空": "UNITED AIRLINES", "達美航空": "DELTA AIR LINES", "阿聯酋航空": "EMIRATES", "土耳其航空": "TURKISH AIRLINES"};
         // 飛行時間（自動換算兩地時差）
         function flightTiming(depCode, arrCode, depTime, arrTime) {
             const toMin = (t) => { const m = /^(\d{1,2}):(\d{2})$/.exec(t || ''); return m ? Number(m[1]) * 60 + Number(m[2]) : null; };
