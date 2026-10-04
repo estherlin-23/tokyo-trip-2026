@@ -302,6 +302,7 @@
                         <h1 class="text-xl font-bold text-slate-800 tracking-wide flex items-center font-serif transition-colors">
                             {{ tripInfo.tripName || tripInfo.destination + '自由行' }}
                             <i class="fa-solid fa-pen text-[10px] text-slate-300 ml-2 group-hover:text-slate-500 transition-colors"></i>
+                            <i v-if="sync.enabled" class="fa-solid text-[11px] ml-2" :class="sync.status === 'error' ? 'fa-triangle-exclamation text-red-400' : 'fa-cloud text-slate-300'" :title="syncStatusText"></i>
                         </h1>
                         <p class="text-[11px] text-slate-500 font-bold mt-1 transition-colors">
                             {{ startYear }}.{{ tripInfo.startDate.substring(5).replace('-', '.') }} - {{ tripInfo.endDate.substring(5).replace('-', '.') }} 
@@ -772,7 +773,7 @@
                             <span class="w-9 h-9 rounded-xl bg-[#EAF3F9] text-[#1E4E79] flex items-center justify-center mr-3 shrink-0"><i class="fa-solid fa-gear text-sm"></i></span>
                             <span class="flex-1 text-left">
                                 <span class="block text-[15px] font-bold text-slate-800">設定</span>
-                                <span class="block text-[11px] font-bold text-slate-400 mt-0.5">外觀主題・備份與匯出</span>
+                                <span class="block text-[11px] font-bold text-slate-400 mt-0.5">{{ sync.enabled ? '☁️ 雲端同步中・' : '' }}外觀主題・備份與匯出</span>
                             </span>
                             <span class="flex h-3 w-12 rounded-full overflow-hidden mr-2.5">
                                 <span v-for="(c, ci) in currentTheme.stops" :key="'hs'+ci" class="flex-1" :style="{ backgroundColor: c }"></span>
@@ -1903,9 +1904,41 @@
                         <div class="px-5 pt-5 pb-3 shrink-0 relative border-b border-slate-100">
                             <button type="button" @click="showBackupModal = false" class="absolute top-4 right-4 w-8 h-8 bg-slate-50 rounded-full text-slate-500 flex justify-center items-center"><i class="fa-solid fa-xmark"></i></button>
                             <h3 class="text-base font-bold text-slate-800">設定</h3>
-                            <p class="text-[11px] font-bold text-slate-400 mt-1">外觀主題・備份與匯出</p>
+                            <p class="text-[11px] font-bold text-slate-400 mt-1">雲端同步・外觀主題・備份與匯出</p>
                         </div>
                         <div class="overflow-y-auto overscroll-contain hide-scrollbar px-4 pt-4 pb-5 space-y-5" style="-webkit-overflow-scrolling: touch;">
+                            <!-- ☁️ 雲端同步 -->
+                            <div>
+                                <p class="text-[10px] font-bold text-slate-400 tracking-widest px-1 mb-1.5">雲端同步・和旅伴共同編輯</p>
+                                <div v-if="sync.enabled" class="rounded-2xl border border-slate-100 p-3.5">
+                                    <div class="flex items-center">
+                                        <span class="w-2.5 h-2.5 rounded-full mr-2 shrink-0" :class="{ 'bg-emerald-500': sync.status === 'online', 'bg-amber-400 animate-pulse': sync.status === 'syncing' || sync.status === 'connecting', 'bg-red-400': sync.status === 'error', 'bg-slate-300': sync.status === 'off' }"></span>
+                                        <span class="text-[13px] font-bold text-slate-700 flex-1">{{ syncStatusText }}</span>
+                                        <button type="button" @click="pushSync(); connectSync()" class="text-[11px] font-bold text-slate-500 bg-slate-50 border border-slate-200 rounded-full px-2.5 py-1 active:scale-95"><i class="fa-solid fa-rotate mr-1"></i>立即同步</button>
+                                    </div>
+                                    <p v-if="sync.error" class="text-[11px] font-bold text-[#9E0E26] mt-2 leading-relaxed">{{ sync.error }}</p>
+                                    <p class="text-[11px] font-bold text-slate-400 mt-2 leading-relaxed">行程、花費、墊付、清單會即時同步；照片與附件只存在各自手機。</p>
+                                    <div class="flex gap-2 mt-3">
+                                        <button type="button" @click="shareInvite" class="flex-1 text-[12px] font-bold py-2.5 rounded-lg bg-[#1e293b] text-white active:scale-[0.98]"><i class="fa-solid fa-user-plus mr-1.5"></i>邀請旅伴</button>
+                                        <button type="button" @click="stopSync" class="text-[12px] font-bold py-2.5 px-3 rounded-lg bg-white border border-slate-200 text-slate-500 active:scale-[0.98]">停止同步</button>
+                                    </div>
+                                </div>
+                                <div v-else class="rounded-2xl border border-slate-100 overflow-hidden divide-y divide-slate-100">
+                                    <div class="p-3.5">
+                                        <p class="text-[14px] font-bold text-slate-800"><i class="fa-solid fa-cloud-arrow-up mr-1.5 text-[#3F7FB0]"></i>建立共用旅程（我是第一個）</p>
+                                        <p class="text-[11px] font-bold text-slate-400 mt-1 leading-relaxed">把 Firebase「網頁應用程式」的 firebaseConfig 整段貼在下面</p>
+                                        <textarea v-model="syncConfigText" rows="4" placeholder="const firebaseConfig = {&#10;  apiKey: &quot;...&quot;,&#10;  authDomain: &quot;...&quot;,&#10;  projectId: &quot;...&quot;, ...&#10;};" class="w-full mt-2 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2 text-[11px] font-sans outline-none resize-none leading-snug"></textarea>
+                                        <button type="button" @click="createCloudTrip" class="w-full mt-2 text-[12px] font-bold py-2.5 rounded-lg bg-[#1e293b] text-white active:scale-[0.98]"><i class="fa-solid fa-cloud mr-1.5"></i>開啟雲端同步</button>
+                                    </div>
+                                    <div class="p-3.5">
+                                        <p class="text-[14px] font-bold text-slate-800"><i class="fa-solid fa-link mr-1.5 text-[#3F7FB0]"></i>加入旅伴的旅程</p>
+                                        <p class="text-[11px] font-bold text-slate-400 mt-1 leading-relaxed">貼上旅伴傳來的邀請連結（不需要自己設定 Firebase）</p>
+                                        <textarea v-model="syncInviteText" rows="2" placeholder="https://…#join=…" class="w-full mt-2 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2 text-[11px] font-sans outline-none resize-none"></textarea>
+                                        <button type="button" @click="joinCloudTrip(syncInviteText)" class="w-full mt-2 text-[12px] font-bold py-2.5 rounded-lg bg-white border border-slate-200 text-slate-700 active:scale-[0.98]">加入</button>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- 外觀主題 -->
                             <div>
                                 <div class="flex items-baseline justify-between px-1 mb-2">
@@ -2219,6 +2252,7 @@
         let _leafletMap = null, _leafletLayer = null, _leafletResizeObs = null, _mapRenderToken = 0;
         let _expenseChart = null;
         let _pdfDoc = null;
+        let _fbApp = null, _fbDb = null, _fbRef = null, _fbUnsub = null, _syncTimer = null, _syncLast = {}, _syncPendingRemote = null;
         const _geoCache = {};
 
         // ===== 資料儲存 =====
@@ -2530,6 +2564,7 @@
                     isDraggingSpot: false, justDraggedSpot: false,
                     showExpenseDetail: false, expenseDetailKey: '',
                     showSwapModal: false, toastMsg: '', showSettleDetail: false,
+                    sync: { enabled: false, config: null, code: '', status: 'off', lastAt: 0, error: '', deviceId: '', joining: false }, syncConfigText: '', syncInviteText: '', isApplyingRemote: false,
                     konbiniBrands: ['7-11', '全家', 'LAWSON'],
                     konbiniSuggestions: [
                         { name: '炸雞塊 Karaage-kun', brand: 'LAWSON' }, { name: '炸雞 Famichiki', brand: '全家' }, { name: '蛋沙拉三明治', brand: '7-11' },
@@ -2662,6 +2697,18 @@
                     }).filter(r => Math.round(r.ntd) > 0).sort((a, b) => b.ntd - a.ntd);
                     return { results, details };
                 },
+                syncStatusText() {
+                    const st = this.sync.status;
+                    if (st === 'connecting') return '連線中…';
+                    if (st === 'syncing') return '同步中…';
+                    if (st === 'error') return '同步出了點問題';
+                    if (st === 'online') {
+                        if (!this.sync.lastAt) return '已連線';
+                        const m = Math.floor((this.nowTick - this.sync.lastAt) / 60000);
+                        return m < 1 ? '已同步・剛剛' : `已同步・${m} 分鐘前`;
+                    }
+                    return '未連線';
+                },
                 todoTotals() {
                     let done = 0, total = 0;
                     this.todoCategories.forEach(c => (c.subcategories || []).forEach(s => (s.items || []).forEach(i => { total++; if (i.done) done++; })));
@@ -2774,6 +2821,8 @@
                 appState() { this.autoSave(); },
                 isGenerated() { this.autoSave(); },
                 
+                showSpotModal(v) { if (!v && _syncPendingRemote) setTimeout(() => { if (_syncPendingRemote) this.receiveRemote(_syncPendingRemote); }, 300); },
+                isDraggingSpot(v) { if (!v && _syncPendingRemote) setTimeout(() => { if (_syncPendingRemote) this.receiveRemote(_syncPendingRemote); }, 300); },
                 'selectedSpot.type': function(n) {
                     if (this.spotModalMode !== 'view' && !this.newCheckText) this.newCheckKind = this.defaultKindFor(n);
                 },
@@ -2864,6 +2913,15 @@
                     console.warn("DB Load failed", e);
                 }
                 this.applyTheme();
+                // 雲端同步：有設定過就自動連線；網址帶邀請碼就詢問是否加入
+                this.loadSyncSettings();
+                if (this.sync.enabled) this.connectSync().then(ok => { if (ok) this.schedulePush(500); });
+                if (/#join=/.test(location.hash)) {
+                    const link = location.href;
+                    history.replaceState(null, '', location.pathname + location.search);
+                    setTimeout(() => this.joinCloudTrip(link), 600);
+                }
+                window.addEventListener('online', () => { if (this.sync.enabled) { this.connectSync().then(() => this.schedulePush(300)); } });
                 // 讀取完成後才開始自動儲存，避免空白資料蓋掉原本的行程
                 this.$nextTick(() => { this.isStateLoaded = true; });
             },
@@ -2919,6 +2977,7 @@
                         }));
                         await saveToDB(DB_KEY, dataToSave);
                     } catch (err) { console.warn('save failed', err); }
+                    if (this.sync.enabled && !this.isApplyingRemote) this.schedulePush();
                 },
                 blankFlight() {
                     return { airline: '', flightNo: '', date: '', depCode: '', depTime: '', depTerminal: '', arrCode: '', arrTime: '', arrTerminal: '',
@@ -3986,6 +4045,211 @@
                     return this.currentSpotOf(day) === sp;
                 },
                 inkOn(hex) { return inkOn(hex); },
+                // ===== 雲端同步（Firebase） =====
+                loadSyncSettings() {
+                    try { const s = JSON.parse(localStorage.getItem('tripApp_sync') || 'null'); if (s && s.config && s.code) { this.sync.config = s.config; this.sync.code = s.code; this.sync.enabled = true; } } catch (e) {}
+                    try { _syncLast = JSON.parse(localStorage.getItem('tripApp_syncLast') || '{}') || {}; } catch (e) { _syncLast = {}; }
+                    let dev = localStorage.getItem('tripApp_device');
+                    if (!dev) { dev = 'd' + Math.random().toString(36).slice(2, 10); try { localStorage.setItem('tripApp_device', dev); } catch (e) {} }
+                    this.sync.deviceId = dev;
+                },
+                saveSyncSettings() {
+                    try {
+                        if (this.sync.enabled) localStorage.setItem('tripApp_sync', JSON.stringify({ config: this.sync.config, code: this.sync.code }));
+                        else localStorage.removeItem('tripApp_sync');
+                        localStorage.setItem('tripApp_syncLast', JSON.stringify(_syncLast || {}));
+                    } catch (e) {}
+                },
+                // 從 Firebase 主控台複製的那一段設定文字解析出來
+                parseFirebaseConfig(text) {
+                    const t = String(text || '');
+                    const cfg = {};
+                    const re = /(apiKey|authDomain|projectId|storageBucket|messagingSenderId|appId|measurementId)\s*[:=]\s*["']([^"']+)["']/g;
+                    let m; while ((m = re.exec(t))) cfg[m[1]] = m[2];
+                    if (!cfg.apiKey || !cfg.projectId || !cfg.appId) return null;
+                    return cfg;
+                },
+                async loadFirebaseSdk() {
+                    const v = '10.12.2';
+                    await this.loadScriptOnce(`https://www.gstatic.com/firebasejs/${v}/firebase-app-compat.js`, 15000);
+                    await this.loadScriptOnce(`https://www.gstatic.com/firebasejs/${v}/firebase-auth-compat.js`, 15000);
+                    await this.loadScriptOnce(`https://www.gstatic.com/firebasejs/${v}/firebase-firestore-compat.js`, 15000);
+                    return window.firebase;
+                },
+                async connectSync() {
+                    if (!this.sync.enabled || !this.sync.config || !this.sync.code) return false;
+                    this.sync.status = 'connecting'; this.sync.error = '';
+                    try {
+                        const fb = await this.loadFirebaseSdk();
+                        if (!_fbApp) _fbApp = fb.apps.find(a => a.name === 'tripSync') || fb.initializeApp(this.sync.config, 'tripSync');
+                        await _fbApp.auth().signInAnonymously();
+                        _fbDb = _fbApp.firestore();
+                        _fbRef = _fbDb.collection('trips').doc(this.sync.code);
+                        if (_fbUnsub) _fbUnsub();
+                        _fbUnsub = _fbRef.onSnapshot(snap => {
+                            if (!snap.exists || snap.metadata.hasPendingWrites) return;
+                            const d = snap.data();
+                            this.sync.status = 'online'; this.sync.lastAt = Date.now();
+                            this.receiveRemote({ items: d.items || {}, tomb: d.tomb || {} });
+                        }, err => { this.sync.status = 'error'; this.sync.error = this.syncErrorText(err); });
+                        this.sync.status = 'online';
+                        return true;
+                    } catch (e) {
+                        console.error(e);
+                        this.sync.status = 'error'; this.sync.error = this.syncErrorText(e);
+                        return false;
+                    }
+                },
+                syncErrorText(e) {
+                    const c = (e && (e.code || e.message)) || '';
+                    if (/permission/i.test(c)) return '沒有權限：請確認 Firestore「規則」已照教學貼上並發布';
+                    if (/operation-not-allowed|admin-restricted/i.test(c)) return '請到 Firebase 的 Authentication 開啟「匿名」登入';
+                    if (/api-key|invalid-api-key/i.test(c)) return '設定文字有誤，請重新複製 firebaseConfig';
+                    if (/unavailable|network|offline|timeout|load failed/i.test(c)) return '目前沒有網路，恢復連線後會自動同步';
+                    return '同步失敗：' + c;
+                },
+                // 別人改了 → 合併進來（這台手機還沒送出的修改會保留）
+                receiveRemote(remote) {
+                    if (this.sync.joining) return;
+                    if (this.showSpotModal || this.isDraggingSpot || this.appState !== 'main') { _syncPendingRemote = remote; return; }
+                    _syncPendingRemote = null;
+                    const last = _syncLast || {}, ri = remote.items || {};
+                    const same = Object.keys(ri).length === Object.keys(last).length && Object.keys(ri).every(k => last[k] && last[k].d === ri[k].d && last[k].u === ri[k].u);
+                    if (same) return;   // 自己剛送出的內容，不用重畫
+                    const now = Date.now();
+                    const localDiff = syncDiff(syncItemsFromState(this.syncStateSnapshot()), _syncLast || {}, now);
+                    const merged = syncMerge(remote, localDiff);
+                    this.applySyncDoc(merged);
+                    _syncLast = JSON.parse(JSON.stringify(remote.items || {}));
+                    this.saveSyncSettings();
+                    if (Object.keys(localDiff.changed).length || Object.keys(localDiff.tomb).length) this.schedulePush(300);
+                },
+                syncStateSnapshot() {
+                    return { tripInfo: this.tripInfo, itinerary: this.itinerary, todoCategories: this.todoCategories, customPayers: this.customPayers,
+                             customCostCategories: this.customCostCategories, customPaymentMethods: this.customPaymentMethods, customTransits: this.customTransits };
+                },
+                applySyncDoc(doc) {
+                    const b = syncBuildState(doc, this.syncStateSnapshot());
+                    if (!b.days.length && !Object.keys(doc.items || {}).length) return;
+                    this.isApplyingRemote = true;
+                    if (b.tripInfo) { this.tripInfo = Object.assign({}, this.tripInfo, b.tripInfo); this.migrateFlights(); }
+                    const plan = { newDates: b.days.map(d => d.rawDate), result: b.days.map(d => Object.assign(this.makeEmptyDay(), { hero: d.hero || this.makeEmptyDay().hero, customSorted: d.customSorted, spots: d.spots })) };
+                    if (plan.result.length) this.applyItineraryPlan(plan);
+                    if (b.lists) {
+                        ['customPayers', 'customCostCategories', 'customPaymentMethods', 'customTransits'].forEach(k => { if (Array.isArray(b.lists[k])) this[k] = b.lists[k]; });
+                    }
+                    if (b.todoCategories && b.todoCategories.length) this.todoCategories = b.todoCategories;
+                    this.isGenerated = true;
+                    if (this.appState === 'setup' && !this.isEditing) this.appState = 'main';
+                    this.$nextTick(() => {
+                        this.isApplyingRemote = false;
+                        if (this.currentTab === 'itinerary') this.initSortableItinerary();
+                        if (this.currentTab === 'todo') this.initSortableTodo();
+                    });
+                },
+                schedulePush(delay) {
+                    if (!this.sync.enabled || this.isApplyingRemote) return;
+                    clearTimeout(_syncTimer);
+                    _syncTimer = setTimeout(() => this.pushSync(), delay == null ? 1200 : delay);
+                },
+                async pushSync() {
+                    if (!this.sync.enabled) return;
+                    if (!_fbRef) { const ok = await this.connectSync(); if (!ok) return; }
+                    if (this.sync.joining) return;
+                    const diff = syncDiff(syncItemsFromState(this.syncStateSnapshot()), _syncLast || {}, Date.now());
+                    if (!Object.keys(diff.changed).length && !Object.keys(diff.tomb).length) return;
+                    this.sync.status = 'syncing';
+                    try {
+                        let merged = null;
+                        await _fbDb.runTransaction(async tx => {
+                            const snap = await tx.get(_fbRef);
+                            const remote = snap.exists ? { items: snap.data().items || {}, tomb: snap.data().tomb || {} } : null;
+                            merged = syncMerge(remote, diff);
+                            if (JSON.stringify(merged).length > 950000) throw new Error('資料量太大，超過雲端單筆上限');
+                            tx.set(_fbRef, { items: merged.items, tomb: merged.tomb, name: this.tripInfo.tripName || '', updatedAt: Date.now(), updatedBy: this.sync.deviceId });
+                        });
+                        _syncLast = JSON.parse(JSON.stringify(merged.items));
+                        this.saveSyncSettings();
+                        this.sync.status = 'online'; this.sync.lastAt = Date.now(); this.sync.error = '';
+                        // 合併時如果拿到旅伴的新內容，更新到畫面
+                        const localNow = syncItemsFromState(this.syncStateSnapshot());
+                        if (Object.keys(merged.items).some(k => localNow[k] !== merged.items[k].d) || Object.keys(localNow).some(k => !merged.items[k])) this.applySyncDoc(merged);
+                    } catch (e) {
+                        console.error(e);
+                        this.sync.status = 'error'; this.sync.error = this.syncErrorText(e);
+                        clearTimeout(_syncTimer); _syncTimer = setTimeout(() => this.pushSync(), 30000);
+                    }
+                },
+                randomCode() {
+                    const a = new Uint8Array(18); (window.crypto || window.msCrypto).getRandomValues(a);
+                    return Array.from(a).map(x => 'abcdefghijkmnpqrstuvwxyz23456789'[x % 32]).join('');
+                },
+                // 我是第一個：建立共用旅程，把這台手機的行程放上雲端
+                async createCloudTrip() {
+                    const cfg = this.parseFirebaseConfig(this.syncConfigText);
+                    if (!cfg) return alert('讀不到 Firebase 設定，請把 firebaseConfig 那一整段（含大括號）完整貼上');
+                    this.sync.config = cfg; this.sync.code = this.randomCode(); this.sync.enabled = true;
+                    _syncLast = {};
+                    this.saveSyncSettings();
+                    const ok = await this.connectSync();
+                    if (!ok) return;
+                    await this.pushSync();
+                    if (this.sync.status !== 'error') this.showToast('雲端同步已開啟！可以分享邀請給旅伴了');
+                },
+                // 旅伴：用邀請連結加入（雲端上的行程會取代這台手機的行程）
+                async joinCloudTrip(text) {
+                    const m = String(text || '').match(/join=([A-Za-z0-9_\-]+)/);
+                    if (!m) return alert('這不是邀請連結，請貼上旅伴傳來、含有「join=」的那一整串網址');
+                    let payload;
+                    try { payload = JSON.parse(decodeURIComponent(escape(atob(m[1].replace(/-/g, '+').replace(/_/g, '/'))))); } catch (e) { return alert('邀請連結不完整，請旅伴重新傳一次'); }
+                    if (!payload || !payload.c || !payload.t) return alert('邀請連結不完整，請旅伴重新傳一次');
+                    if (!confirm(`要加入「${payload.n || '共用旅程'}」嗎？\n\n加入後，這台手機目前的行程會被旅伴雲端上的行程取代（建議先下載備份）。`)) return;
+                    this.sync.config = payload.c; this.sync.code = payload.t; this.sync.enabled = true; this.sync.joining = true;
+                    _syncLast = {};
+                    this.saveSyncSettings();
+                    const ok = await this.connectSync();
+                    if (!ok) { this.sync.joining = false; return; }
+                    try {
+                        const snap = await _fbRef.get();
+                        if (!snap.exists) { this.sync.joining = false; return alert('雲端上還沒有這個旅程的資料，請旅伴先打開 App 同步一次'); }
+                        const d = snap.data();
+                        const doc = { items: d.items || {}, tomb: d.tomb || {} };
+                        // 用雲端版本完整取代
+                        this.itinerary = []; this.todoCategories = [];
+                        this.applySyncDoc(doc);
+                        _syncLast = JSON.parse(JSON.stringify(doc.items));
+                        this.saveSyncSettings();
+                        this.sync.joining = false;
+                        this.syncInviteText = '';
+                        this.showToast(`已加入「${payload.n || '共用旅程'}」`);
+                        this.$nextTick(() => this.saveNow());
+                    } catch (e) {
+                        this.sync.joining = false;
+                        this.sync.status = 'error'; this.sync.error = this.syncErrorText(e);
+                    }
+                },
+                inviteLink() {
+                    const payload = { c: this.sync.config, t: this.sync.code, n: this.tripInfo.tripName || '' };
+                    const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(payload)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+                    return location.origin + location.pathname + '#join=' + b64;
+                },
+                async shareInvite() {
+                    const url = this.inviteLink();
+                    const text = `一起編輯「${this.tripInfo.tripName || '旅程'}」！\n打開旅行手帳 App →「總覽 → 設定 → 雲端同步 → 加入旅伴的旅程」，貼上這個連結：`;
+                    try {
+                        if (navigator.share) { await navigator.share({ title: '旅程邀請', text, url }); return; }
+                    } catch (e) { if (e && e.name === 'AbortError') return; }
+                    this.copyText(text + '\n' + url, '已複製邀請連結');
+                },
+                stopSync() {
+                    if (!confirm('要停止這台手機的雲端同步嗎？\n（這台手機上的行程會保留，旅伴那邊不受影響）')) return;
+                    if (_fbUnsub) { _fbUnsub(); _fbUnsub = null; }
+                    _fbRef = null;
+                    this.sync.enabled = false; this.sync.status = 'off'; this.sync.code = '';
+                    _syncLast = {};
+                    this.saveSyncSettings();
+                },
+
                 // --- 墊付 ---
                 onAdvanceToggle() {
                     if (!Array.isArray(this.selectedSpot.advances)) this.selectedSpot.advances = [];
@@ -4827,6 +5091,95 @@
                 }
             }
         });
+        // ===== 雲端同步（Firebase）核心：把行程拆成一筆一筆，各自記「最後修改時間」，兩邊同時改也能合併 =====
+        const SYNC_MEDIA_KEYS = ['images', 'files', 'coverImage'];
+        function syncStripSpot(sp) {
+            const o = {};
+            Object.keys(sp).forEach(k => { if (!SYNC_MEDIA_KEYS.includes(k) && k !== '_u') o[k] = sp[k]; });
+            return o;
+        }
+        // 把目前的行程變成 { 鍵: 內容字串 }
+        function syncItemsFromState(st) {
+            const items = {};
+            items['trip'] = JSON.stringify(st.tripInfo || {});
+            items['lists'] = JSON.stringify({ customPayers: st.customPayers || [], customCostCategories: st.customCostCategories || [], customPaymentMethods: st.customPaymentMethods || [], customTransits: st.customTransits || [] });
+            (st.itinerary || []).forEach(day => {
+                const key = day.rawDate || day.label;
+                const hero = day.hero ? Object.assign({}, day.hero) : null;
+                if (hero && /^data:/.test(hero.image || '')) hero.image = '';   // 自己上傳的封面照片留在本機
+                items['day:' + key] = JSON.stringify({ hero, customSorted: !!day.customSorted, order: (day.spots || []).map(s => s.id) });
+                (day.spots || []).forEach(sp => { if (sp.id) items['spot:' + sp.id] = JSON.stringify(Object.assign(syncStripSpot(sp), { __day: key })); });
+            });
+            (st.todoCategories || []).forEach(c => {
+                const cc = JSON.parse(JSON.stringify(c));
+                (cc.subcategories || []).forEach(sub => { delete sub.newItemText; });   // 正在打字的草稿不同步
+                items['todo:' + c.id] = JSON.stringify(cc);
+            });
+            items['todoOrder'] = JSON.stringify((st.todoCategories || []).map(c => c.id));
+            return items;
+        }
+        // 跟上次同步的內容比對：有變的才蓋新時間戳；不見的記成刪除
+        function syncDiff(items, last, now) {
+            const changed = {}, tomb = {};
+            Object.keys(items).forEach(k => { if (!last[k] || last[k].d !== items[k]) changed[k] = { d: items[k], u: now }; });
+            Object.keys(last).forEach(k => { if (!(k in items)) tomb[k] = now; });
+            return { changed, tomb };
+        }
+        // 合併：同一筆取時間比較新的；刪除比內容新就刪掉
+        function syncMerge(remote, local) {
+            const R = remote || { items: {}, tomb: {} };
+            const items = Object.assign({}, R.items || {});
+            const tomb = Object.assign({}, R.tomb || {});
+            Object.keys(local.tomb || {}).forEach(k => { if (!tomb[k] || tomb[k] < local.tomb[k]) tomb[k] = local.tomb[k]; });
+            Object.keys(local.changed || {}).forEach(k => { const r = items[k]; if (!r || r.u <= local.changed[k].u) items[k] = local.changed[k]; });
+            Object.keys(tomb).forEach(k => { if (items[k] && items[k].u <= tomb[k]) delete items[k]; });
+            // 時間很久的刪除紀錄清掉，避免越存越大（30 天）
+            const cutoff = Date.now() - 30 * 86400000;
+            Object.keys(tomb).forEach(k => { if (tomb[k] < cutoff && !items[k]) delete tomb[k]; });
+            return { items, tomb };
+        }
+        // 由合併後的資料重建行程；照片與附件沿用這台手機原本的
+        function syncBuildState(doc, localState) {
+            const items = doc.items || {};
+            const get = (k) => { try { return items[k] ? JSON.parse(items[k].d) : null; } catch (e) { return null; } };
+            const media = {};
+            (localState.itinerary || []).forEach(d => (d.spots || []).forEach(sp => {
+                if (sp.id) { const m = {}; SYNC_MEDIA_KEYS.forEach(k => { if (sp[k] != null) m[k] = sp[k]; }); media[sp.id] = m; }
+            }));
+            const tripInfo = get('trip') || localState.tripInfo;
+            const lists = get('lists') || {};
+            const spotsByDay = {};
+            Object.keys(items).forEach(k => {
+                if (!k.startsWith('spot:')) return;
+                const sp = get(k); if (!sp) return;
+                const dayKey = sp.__day; delete sp.__day;
+                Object.assign(sp, { images: [], files: [], coverImage: '' }, media[sp.id] || {});
+                (spotsByDay[dayKey] = spotsByDay[dayKey] || []).push(sp);
+            });
+            const dayKeys = Object.keys(items).filter(k => k.startsWith('day:')).map(k => k.slice(4));
+            Object.keys(spotsByDay).forEach(k => { if (!dayKeys.includes(k)) dayKeys.push(k); });
+            dayKeys.sort();
+            const localHero = {};
+            (localState.itinerary || []).forEach(d => { if (d.hero && /^data:/.test(d.hero.image || '')) localHero[d.rawDate || d.label] = d.hero.image; });
+            const days = dayKeys.map(key => {
+                const meta = get('day:' + key) || {};
+                if (meta.hero && !meta.hero.image && localHero[key]) meta.hero.image = localHero[key];
+                const list = spotsByDay[key] || [];
+                const order = meta.order || [];
+                list.sort((a, b) => {
+                    const ia = order.indexOf(a.id), ib = order.indexOf(b.id);
+                    if (ia >= 0 && ib >= 0) return ia - ib;
+                    if (ia >= 0) return -1; if (ib >= 0) return 1;
+                    return String(a.startTime || '99').localeCompare(String(b.startTime || '99'));
+                });
+                return { rawDate: key, hero: meta.hero, customSorted: !!meta.customSorted, spots: list };
+            });
+            const todoOrder = get('todoOrder') || [];
+            const todos = Object.keys(items).filter(k => k.startsWith('todo:')).map(k => get(k)).filter(Boolean);
+            todos.sort((a, b) => { const ia = todoOrder.indexOf(a.id), ib = todoOrder.indexOf(b.id); return (ia < 0 ? 999 : ia) - (ib < 0 ? 999 : ib); });
+            return { tripInfo, days, todoCategories: todos, lists };
+        }
+
         // ===== 共用元件 =====
         const WEEK_ZH = ['日', '一', '二', '三', '四', '五', '六'];
         // 常用機場：中文名稱、時區（算飛行時間用）
