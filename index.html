@@ -412,6 +412,7 @@
                                                     <span v-if="spot.location && spot.type !== 'transit'" class="inline-flex items-center min-w-0 max-w-full"><i class="fa-solid fa-location-dot text-[10px] text-slate-300 mr-1"></i><span class="truncate">{{ spot.location }}</span></span>
                                                     <span v-if="spot.hours && spot.type !== 'hotel' && spot.type !== 'transit'" class="inline-flex items-center font-sans"><i class="fa-regular fa-clock text-[10px] text-slate-300 mr-1"></i>{{ spot.hours }}</span>
                                                     <span v-if="spot.cost && spot.cost > 0" class="inline-flex items-center font-sans"><i class="fa-solid fa-wallet text-[10px] text-slate-300 mr-1"></i><span class="text-slate-600">{{ costMain(spot) }}</span><span v-if="costSub(spot)" class="text-slate-400 ml-1 font-normal">{{ costSub(spot) }}</span></span>
+                                                    <span v-if="spot.isAdvance && spot.advances && spot.advances.length" class="inline-flex items-center text-[10px] px-1.5 py-[2px] rounded" :style="{ backgroundColor: currentTheme.soft, color: currentTheme.text }"><i class="fa-solid fa-hand-holding-dollar mr-1"></i>{{ spot.payer }} 墊付</span>
                                                 </div>
                                                 <div class="h-1"></div>
 
@@ -887,6 +888,55 @@
                                 <i class="fa-solid fa-receipt text-2xl mb-2 opacity-50"></i><br>目前尚無任何花費紀錄
                             </div>
                         </div>
+
+                        <!-- 🤝 分帳結算 -->
+                        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="flex items-center">
+                                    <span class="w-8 h-8 rounded-lg bg-[#EAF3F9] text-[#1E4E79] flex items-center justify-center mr-2.5"><i class="fa-solid fa-hand-holding-dollar text-[13px]"></i></span>
+                                    <div>
+                                        <p class="text-[15px] font-bold text-slate-800 leading-tight">分帳結算</p>
+                                        <p class="text-[10px] font-bold text-slate-400">依「墊付」紀錄計算，已互相抵銷</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div v-if="settlement.results.length" class="space-y-2.5">
+                                <div v-for="(r, ri) in settlement.results" :key="'st'+ri" class="rounded-xl bg-slate-50 border border-slate-100 px-3.5 py-3">
+                                    <div class="flex items-center">
+                                        <span class="w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-bold shrink-0" :style="{ backgroundColor: currentTheme.soft, color: currentTheme.text }">{{ r.from.trim().charAt(0).toUpperCase() }}</span>
+                                        <div class="flex-1 min-w-0 px-2.5">
+                                            <p class="text-[13px] font-bold text-slate-700 truncate">{{ r.from }} <i class="fa-solid fa-arrow-right text-[10px] text-slate-300 mx-1"></i> {{ r.to }}</p>
+                                            <p class="text-[10px] font-bold text-slate-400">{{ r.from }} 要給 {{ r.to }}</p>
+                                        </div>
+                                        <div class="text-right shrink-0">
+                                            <p class="text-[17px] font-bold font-sans leading-tight" :style="{ color: currentTheme.vivid }">NT${{ formatCurrency(Math.round(r.ntd)) }}</p>
+                                            <p class="text-[10px] font-bold text-slate-400 font-sans">≈ ¥{{ formatCurrency(Math.round(r.ntd / exchangeRateJPYtoTWD)) }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="button" @click="showSettleDetail = !showSettleDetail" class="w-full text-[11px] font-bold text-slate-500 py-1.5 active:opacity-60">
+                                    {{ showSettleDetail ? '收合明細' : '查看每筆墊付明細（' + settlement.details.length + ' 筆）' }} <i class="fa-solid text-[9px] ml-1" :class="showSettleDetail ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+                                </button>
+                                <div v-if="showSettleDetail" class="rounded-xl border border-slate-100 divide-y divide-slate-100">
+                                    <button type="button" v-for="(d, di) in settlement.details" :key="'sd'+di" @click="jumpToSpot(d.dayIdx, d.spotIdx)" class="w-full text-left flex items-center px-3 py-2.5 active:bg-slate-50">
+                                        <span class="w-[40px] shrink-0 text-[10px] font-bold text-slate-400 font-sans">{{ d.date }}</span>
+                                        <span class="flex-1 min-w-0">
+                                            <span class="block text-[12px] font-bold text-slate-700 truncate">{{ d.name }}</span>
+                                            <span class="block text-[10px] font-bold text-slate-400 truncate">{{ d.to }} 幫 {{ d.from }} 墊付</span>
+                                        </span>
+                                        <span class="text-right shrink-0 ml-2">
+                                            <span class="block text-[12px] font-bold text-slate-700 font-sans">{{ d.currency === 'JPY' ? '¥' : 'NT$' }}{{ formatCurrency(d.orig) }}</span>
+                                            <span v-if="d.currency === 'JPY'" class="block text-[10px] font-bold text-slate-400 font-sans">≈ NT${{ formatCurrency(Math.round(d.ntd)) }}</span>
+                                        </span>
+                                    </button>
+                                </div>
+                            </div>
+                            <div v-else class="text-center py-6 text-slate-400">
+                                <i class="fa-solid fa-scale-balanced text-2xl mb-2 opacity-40"></i>
+                                <p class="text-[12px] font-bold">目前沒有墊付紀錄</p>
+                                <p class="text-[11px] mt-1 leading-relaxed">在行程的「花費與記帳」打開「這筆有幫別人墊付」，<br>這裡就會自動算出誰該給誰多少。</p>
+                            </div>
+                        </div>
                     </div>
 
                 </main>
@@ -1206,6 +1256,12 @@
                                                 <span v-if="selectedSpot.payer" class="text-[10px] font-bold text-slate-500 bg-slate-50 px-1.5 py-0.5 rounded"><i class="fa-regular fa-user mr-0.5"></i>{{ selectedSpot.payer }}</span>
                                                 <span v-if="selectedSpot.paymentMethod" class="text-[10px] font-bold text-slate-500 bg-slate-50 px-1.5 py-0.5 rounded"><i class="fa-regular fa-credit-card mr-0.5"></i>{{ selectedSpot.paymentMethod }}</span>
                                             </div>
+                                            <div v-if="selectedSpot.isAdvance && selectedSpot.advances && selectedSpot.advances.length" class="mt-2 ml-5 rounded-lg px-2.5 py-2" :style="{ backgroundColor: currentTheme.soft }">
+                                                <p class="text-[10px] font-bold mb-1" :style="{ color: currentTheme.text }"><i class="fa-solid fa-hand-holding-dollar mr-1"></i>{{ selectedSpot.payer }} 先墊付</p>
+                                                <div v-for="a in selectedSpot.advances" :key="'va'+a.person" class="flex justify-between text-[12px] font-bold text-slate-600 py-0.5">
+                                                    <span>{{ a.person }} 要還</span><span class="font-sans">{{ selectedSpot.currency === 'JPY' ? '¥' : 'NT$' }}{{ formatCurrency(a.amount) }}</span>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
 
@@ -1424,6 +1480,43 @@
                                     </div>
                                 </div>
                                 
+                                <!-- 墊付 -->
+                                <div class="rounded-xl border border-slate-200 p-3">
+                                    <label class="flex items-center justify-between cursor-pointer select-none">
+                                        <span class="text-[12px] font-bold text-slate-700 flex items-center"><i class="fa-solid fa-hand-holding-dollar mr-1.5 text-slate-400"></i>這筆有幫別人墊付</span>
+                                        <span class="relative inline-flex w-10 h-6 rounded-full transition-colors" :style="{ backgroundColor: selectedSpot.isAdvance ? currentTheme.accent : '#E2E8F0' }">
+                                            <input type="checkbox" v-model="selectedSpot.isAdvance" @change="onAdvanceToggle" class="absolute inset-0 opacity-0 cursor-pointer">
+                                            <span class="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform" :class="selectedSpot.isAdvance ? 'translate-x-4' : ''"></span>
+                                        </span>
+                                    </label>
+                                    <div v-if="selectedSpot.isAdvance" class="mt-3">
+                                        <p v-if="!selectedSpot.payer || selectedSpot.payer === '自訂'" class="text-[11px] font-bold text-[#9E0E26] mb-2"><i class="fa-solid fa-circle-info mr-1"></i>請先在上面選「付款人」（先付錢的人）</p>
+                                        <p v-else class="text-[11px] font-bold text-slate-400 mb-2 leading-relaxed"><span class="text-slate-600">{{ selectedSpot.payer }}</span> 先付了全部，下面填每個人要還給他的金額（{{ selectedSpot.currency === 'JPY' ? '¥ 日幣' : 'NT$ 台幣' }}）</p>
+                                        <div v-if="advanceCandidates.length" class="rounded-lg border border-slate-100 divide-y divide-slate-100">
+                                            <div v-for="person in advanceCandidates" :key="'adv'+person" class="flex items-center px-2.5 py-2">
+                                                <button type="button" @click.stop="toggleAdvancePerson(person)" class="w-[18px] h-[18px] rounded-md border-[1.5px] flex items-center justify-center shrink-0 mr-2.5"
+                                                        :style="hasAdvance(person) ? { backgroundColor: currentTheme.accent, borderColor: currentTheme.accent } : { borderColor: '#CBD5E1' }">
+                                                    <i v-if="hasAdvance(person)" class="fa-solid fa-check text-[9px]" :style="{ color: currentTheme.onAccent }"></i>
+                                                </button>
+                                                <span class="flex-1 min-w-0 text-[13px] font-bold text-slate-700 truncate">{{ person }}</span>
+                                                <span class="text-[11px] font-bold text-slate-300 mr-1">{{ selectedSpot.currency === 'JPY' ? '¥' : 'NT$' }}</span>
+                                                <input type="text" inputmode="decimal" :value="getAdvance(person)" @input="setAdvance(person, $event.target.value)" placeholder="0"
+                                                       class="w-[78px] text-right text-[13px] font-bold font-sans text-slate-700 bg-slate-50 border border-slate-100 rounded-md px-2 py-1 outline-none">
+                                            </div>
+                                        </div>
+                                        <p v-else class="text-[11px] font-bold text-slate-400 bg-slate-50 rounded-lg p-2.5">還沒有其他同行者。在「付款人」選單選「＋ 新增同行者」加入旅伴的名字。</p>
+                                        <div v-if="advanceCandidates.length" class="flex gap-1.5 mt-2">
+                                            <button type="button" @click.stop="splitAdvanceEvenly" class="flex-1 text-[11px] font-bold text-slate-600 bg-white border border-slate-200 rounded-lg py-1.5 active:scale-[0.98]"><i class="fa-solid fa-divide mr-1"></i>含自己平分</button>
+                                            <button type="button" @click.stop="advanceAllToOthers" class="flex-1 text-[11px] font-bold text-slate-600 bg-white border border-slate-200 rounded-lg py-1.5 active:scale-[0.98]"><i class="fa-solid fa-user-group mr-1"></i>全部由勾選的人負擔</button>
+                                        </div>
+                                        <p v-if="advanceCandidates.length" class="text-[10px] font-bold text-slate-400 mt-2 font-sans">
+                                            墊付合計 {{ selectedSpot.currency === 'JPY' ? '¥' : 'NT$' }}{{ formatCurrency(advanceTotal(selectedSpot)) }}
+                                            ・{{ selectedSpot.payer || '付款人' }}自己負擔 {{ selectedSpot.currency === 'JPY' ? '¥' : 'NT$' }}{{ formatCurrency(Math.max(0, (Number(selectedSpot.cost) || 0) - advanceTotal(selectedSpot))) }}
+                                            <span v-if="advanceTotal(selectedSpot) > (Number(selectedSpot.cost) || 0)" class="text-[#9E0E26] ml-1">（超過花費金額了）</span>
+                                        </p>
+                                    </div>
+                                </div>
+
                                 <!-- 自訂管理區 -->
                                 <div v-if="selectedSpot.costCategory === '自訂' || selectedSpot.payer === '自訂' || selectedSpot.paymentMethod === '自訂'" class="bg-slate-50 p-3 rounded-lg border border-slate-200 mt-2">
                                     <div v-if="selectedSpot.costCategory === '自訂'" class="mb-3 last:mb-0">
@@ -2436,7 +2529,7 @@
                     sortableInstances: {},
                     isDraggingSpot: false, justDraggedSpot: false,
                     showExpenseDetail: false, expenseDetailKey: '',
-                    showSwapModal: false, toastMsg: '',
+                    showSwapModal: false, toastMsg: '', showSettleDetail: false,
                     konbiniBrands: ['7-11', '全家', 'LAWSON'],
                     konbiniSuggestions: [
                         { name: '炸雞塊 Karaage-kun', brand: 'LAWSON' }, { name: '炸雞 Famichiki', brand: '全家' }, { name: '蛋沙拉三明治', brand: '7-11' },
@@ -2532,6 +2625,42 @@
                         shopping: [['必買', '限定商品'], ['必買', '伴手禮'], ['必做', '辦理退稅'], ['必做', '集點／會員卡']]
                     };
                     return (map[t] || []).map(([kind, text]) => ({ kind, text, brand: '' }));
+                },
+                // 同行者名單：旅客本人＋自訂付款人＋行程裡出現過的付款人
+                peopleList() {
+                    const set = [];
+                    const add = (n) => { n = (n || '').trim(); if (n && n !== '自訂' && !set.includes(n)) set.push(n); };
+                    (this.customPayers || []).forEach(add);
+                    this.itinerary.forEach(d => (d.spots || []).forEach(sp => { add(sp.payer); (sp.advances || []).forEach(a => add(a.person)); }));
+                    return set;
+                },
+                advanceCandidates() {
+                    const payer = this.selectedSpot && this.selectedSpot.payer;
+                    return this.peopleList.filter(p => p !== payer);
+                },
+                // 分帳：A 要給 B 多少（台幣，兩人之間互相抵銷）
+                settlement() {
+                    const details = [];
+                    this.itinerary.forEach((day, dIdx) => (day.spots || []).forEach((sp, sIdx) => {
+                        if (!sp.isAdvance || !sp.payer || !Array.isArray(sp.advances)) return;
+                        sp.advances.forEach(a => {
+                            const amt = parseFloat(String(a.amount || '').replace(/[^\d.]/g, '')) || 0;
+                            if (!amt || !a.person || a.person === sp.payer) return;
+                            const ntd = sp.currency === 'JPY' ? amt * this.exchangeRateJPYtoTWD : amt;
+                            details.push({ from: a.person, to: sp.payer, orig: amt, ntd, currency: sp.currency, name: sp.name || '未命名', date: day.shortDate, dayIdx: dIdx, spotIdx: sIdx });
+                        });
+                    }));
+                    const net = {};
+                    details.forEach(d => {
+                        const [x, y] = [d.from, d.to].sort();
+                        const k = x + '\u0000' + y;
+                        net[k] = (net[k] || 0) + (d.from === x ? d.ntd : -d.ntd);
+                    });
+                    const results = Object.keys(net).map(k => {
+                        const [x, y] = k.split('\u0000'); const v = net[k];
+                        return v > 0 ? { from: x, to: y, ntd: v } : { from: y, to: x, ntd: -v };
+                    }).filter(r => Math.round(r.ntd) > 0).sort((a, b) => b.ntd - a.ntd);
+                    return { results, details };
                 },
                 todoTotals() {
                     let done = 0, total = 0;
@@ -3857,6 +3986,45 @@
                     return this.currentSpotOf(day) === sp;
                 },
                 inkOn(hex) { return inkOn(hex); },
+                // --- 墊付 ---
+                onAdvanceToggle() {
+                    if (!Array.isArray(this.selectedSpot.advances)) this.selectedSpot.advances = [];
+                    if (this.selectedSpot.isAdvance && this.selectedSpot.advances.length === 0 && this.advanceCandidates.length === 1) {
+                        this.selectedSpot.advances.push({ person: this.advanceCandidates[0], amount: '' });
+                    }
+                },
+                hasAdvance(person) { return (this.selectedSpot.advances || []).some(a => a.person === person); },
+                getAdvance(person) { const a = (this.selectedSpot.advances || []).find(x => x.person === person); return a ? a.amount : ''; },
+                setAdvance(person, val) {
+                    if (!Array.isArray(this.selectedSpot.advances)) this.selectedSpot.advances = [];
+                    const clean = String(val || '').replace(/[^\d.]/g, '');
+                    const a = this.selectedSpot.advances.find(x => x.person === person);
+                    if (a) a.amount = clean; else this.selectedSpot.advances.push({ person, amount: clean });
+                },
+                toggleAdvancePerson(person) {
+                    if (!Array.isArray(this.selectedSpot.advances)) this.selectedSpot.advances = [];
+                    if (this.hasAdvance(person)) this.selectedSpot.advances = this.selectedSpot.advances.filter(a => a.person !== person);
+                    else this.selectedSpot.advances.push({ person, amount: '' });
+                },
+                splitAdvanceEvenly() {
+                    const cost = Number(this.selectedSpot.cost) || 0;
+                    if (!cost) return alert('請先填寫花費金額');
+                    if (!(this.selectedSpot.advances || []).length) this.selectedSpot.advances = this.advanceCandidates.map(p => ({ person: p, amount: '' }));
+                    const n = this.selectedSpot.advances.length + 1;
+                    const share = Math.round(cost / n * 100) / 100;
+                    this.selectedSpot.advances.forEach(a => { a.amount = String(this.selectedSpot.currency === 'JPY' ? Math.round(share) : share); });
+                },
+                advanceAllToOthers() {
+                    const cost = Number(this.selectedSpot.cost) || 0;
+                    if (!cost) return alert('請先填寫花費金額');
+                    if (!(this.selectedSpot.advances || []).length) this.selectedSpot.advances = this.advanceCandidates.map(p => ({ person: p, amount: '' }));
+                    const n = this.selectedSpot.advances.length;
+                    const share = Math.round(cost / n * 100) / 100;
+                    this.selectedSpot.advances.forEach(a => { a.amount = String(this.selectedSpot.currency === 'JPY' ? Math.round(share) : share); });
+                },
+                advanceTotal(spot) {
+                    return (spot.advances || []).reduce((t, a) => t + (parseFloat(String(a.amount || '').replace(/[^\d.]/g, '')) || 0), 0);
+                },
                 // --- 匯率 ---
                 async fetchRate(manual) {
                     if (this.isRateLoading) return;
@@ -4291,6 +4459,11 @@
                     }
                     if (this.selectedSpot.seats) this.selectedSpot.seats = this.selectedSpot.seats.filter((x, i) => x.name || x.seat || i === 0);
                     this.selectedSpot.checklist = this.sortChecklist((this.selectedSpot.checklist || []).filter(x => (x.text || '').trim()));
+                    if (this.selectedSpot.isAdvance) {
+                        if (!this.selectedSpot.payer || this.selectedSpot.payer === '自訂') return alert('有勾選「墊付」，請先選擇付款人（先付錢的人）');
+                        this.selectedSpot.advances = (this.selectedSpot.advances || []).filter(a => a.person && a.person !== this.selectedSpot.payer && parseFloat(a.amount) > 0);
+                        if (!this.selectedSpot.advances.length) this.selectedSpot.isAdvance = false;
+                    }
                     this.selectedSpot.tags = this.selectedSpot.checklist.map(x => ({ type: x.kind, text: x.text }));   // 舊欄位同步（匯出用）
                     delete this.selectedSpot.buyList;
                     if (this.selectedSpot.type === 'konbini') {
