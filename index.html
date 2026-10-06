@@ -91,7 +91,7 @@
         html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
         .app-container.h-screen { height: 100vh; height: 100dvh; }
         #main-scroll { overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; }
-        [class~="overflow-y-auto"] { -webkit-overflow-scrolling: touch; overscroll-behavior: contain; touch-action: pan-y; }
+        [class~="overflow-y-auto"] { -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
         .glass-header { background: rgba(244, 246, 248, 0.98); border-bottom: 1px solid rgba(0,0,0,0.05); transform: translateZ(0); }
         .glass-nav { background: rgba(255, 255, 255, 0.98); border-top: 1px solid #E2E8F0; transform: translateZ(0); }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
@@ -324,12 +324,15 @@
                             ({{ calculatedDays }} Days)
                         </p>
                     </div>
-                    <button type="button" v-if="currentTab === 'itinerary'" @click="openAddSpot" class="w-9 h-9 bg-slate-800 text-white rounded-full flex items-center justify-center shadow-md active:scale-95 transition-transform ml-4 shrink-0">
+                    <button type="button" v-if="currentTab === 'itinerary' && itinerary.length > 1" @click="showSwapModal = true" aria-label="整天對調" class="w-9 h-9 bg-white border border-slate-200 text-slate-500 rounded-full flex items-center justify-center shadow-sm active:scale-95 transition-transform ml-4 shrink-0">
+                        <i class="fa-solid fa-right-left text-[13px]"></i>
+                    </button>
+                    <button type="button" v-if="currentTab === 'itinerary'" @click="openAddSpot" class="w-9 h-9 bg-slate-800 text-white rounded-full flex items-center justify-center shadow-md active:scale-95 transition-transform ml-2.5 shrink-0">
                         <i class="fa-solid fa-plus text-sm"></i>
                     </button>
                 </header>
 
-                <main id="main-scroll" class="flex-1 overflow-y-auto overflow-x-hidden hide-scrollbar pt-[76px] relative bg-[#F4F6F8]" style="padding-bottom: calc(68px + env(safe-area-inset-bottom, 0px));">
+                <main id="main-scroll" class="flex-1 overflow-y-auto overflow-x-hidden hide-scrollbar pt-[76px] relative bg-[#F4F6F8]" style="padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));">
                     
                     <!-- Tab 1: 行程 (Itinerary) -->
                     <div v-show="currentTab === 'itinerary'" class="animate-fade-in relative min-h-full">
@@ -370,17 +373,12 @@
 
                             <!-- 完美時間軸佈局 (支援拖曳排序) -->
                             <div class="px-3 pb-10">
-                                <div class="flex justify-between items-center mb-4 pl-[50px]">
-                                    <span class="text-xs font-bold text-slate-400"><i class="fa-solid fa-hand-pointer mr-1"></i> 長按卡片即可拖曳排序</span>
-                                    <div class="flex items-center gap-1.5">
-                                        <button type="button" v-if="hasCustomOrder(activeDay)" @click="autoSortCurrentDay" class="text-[10px] font-bold text-brand bg-slate-50 px-2 py-1 rounded border border-slate-200 shadow-sm active:scale-95 flex items-center">
-                                            <i class="fa-solid fa-arrow-down-short-wide mr-1"></i> 按時間排序
-                                        </button>
-                                        <button type="button" v-if="itinerary.length > 1" @click="showSwapModal = true" class="text-[10px] font-bold text-[#1A5F8A] bg-[#EAF3F9] px-2 py-1 rounded border border-[#9CC3DD] shadow-sm active:scale-95 flex items-center">
-                                            <i class="fa-solid fa-right-left mr-1"></i> 整天對調
-                                        </button>
-                                    </div>
+                                <div v-if="hasCustomOrder(activeDay)" class="flex justify-end items-center mb-3">
+                                    <button type="button" @click="autoSortCurrentDay" class="text-[10px] font-bold text-brand bg-slate-50 px-2 py-1 rounded border border-slate-200 shadow-sm active:scale-95 flex items-center">
+                                        <i class="fa-solid fa-arrow-down-short-wide mr-1"></i> 按時間排序
+                                    </button>
                                 </div>
+                                <div v-else class="h-3"></div>
                                 
                                 <div v-if="itinerary[activeDay].spots.length > 0" class="relative">
                                     <!-- 獨立的引導線 -->
@@ -872,7 +870,7 @@
                                         <option value="category">依大類別</option>
                                         <option value="payer">依付款人</option>
                                         <option value="method">依付款方式</option>
-                                        <option value="tag">依花費標籤</option>
+                                        <option value="tag">依花費類別</option>
                                     </select>
                                 </div>
                             </div>
@@ -888,7 +886,7 @@
                                     <span class="w-2.5 h-2.5 rounded-full shrink-0 mr-2.5" :style="{ backgroundColor: row.color }"></span>
                                     <span class="flex-1 min-w-0">
                                         <span class="flex items-baseline">
-                                            <span class="text-[13px] font-bold text-slate-800 truncate mr-2">{{ row.name }}</span>
+                                            <span class="text-[13px] font-bold text-slate-800 truncate mr-2"><span v-if="expenseFilterType === 'tag'" class="mr-1">{{ catEmoji(row.name) }}</span>{{ row.name }}</span>
                                             <span class="ml-auto text-[13px] font-bold text-slate-800 font-sans whitespace-nowrap">NTD${{ formatCurrency(row.value) }}</span>
                                             <span class="text-[11px] font-bold text-slate-400 font-sans whitespace-nowrap ml-1 w-[52px] text-right">({{ formatPct(row.pct) }})</span>
                                         </span>
@@ -919,10 +917,10 @@
                             <div v-if="settlement.results.length" class="space-y-2.5">
                                 <div v-for="(r, ri) in settlement.results" :key="'st'+ri" class="rounded-xl bg-slate-50 border border-slate-100 px-3.5 py-3">
                                     <div class="flex items-center">
-                                        <span class="w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-bold shrink-0" :style="{ backgroundColor: currentTheme.soft, color: currentTheme.text }">{{ r.from.trim().charAt(0).toUpperCase() }}</span>
-                                        <div class="flex-1 min-w-0 px-2.5">
-                                            <p class="text-[13px] font-bold text-slate-700 truncate">{{ r.from }} <i class="fa-solid fa-arrow-right text-[10px] text-slate-300 mx-1"></i> {{ r.to }}</p>
-                                            <p class="text-[10px] font-bold text-slate-400">{{ r.from }} 要給 {{ r.to }}</p>
+                                        <div class="flex-1 min-w-0 pr-3">
+                                            <p class="text-[14px] font-bold text-slate-700 leading-snug break-words">
+                                                {{ r.from }}<i class="fa-solid fa-arrow-right text-[11px] text-slate-300 mx-2"></i>{{ r.to }}
+                                            </p>
                                         </div>
                                         <div class="text-right shrink-0">
                                             <p class="text-[17px] font-bold font-sans leading-tight" :style="{ color: currentTheme.vivid }">NT${{ formatCurrency(Math.round(r.ntd)) }}</p>
@@ -958,7 +956,7 @@
                 </main>
 
                 <!-- Bottom Navigation Bar -->
-                <nav class="glass-nav fixed bottom-0 w-full max-w-[430px] z-30 px-8 flex justify-between items-start" style="padding-top: 7px; padding-bottom: max(calc(env(safe-area-inset-bottom, 0px) - 10px), 6px);">
+                <nav class="glass-nav fixed bottom-0 w-full max-w-[430px] z-30 px-8 flex justify-between items-start" style="padding-top: 14px; padding-bottom: max(calc(env(safe-area-inset-bottom, 0px) - 10px), 6px);">
                     <button type="button" @click="currentTab = 'itinerary'" class="flex flex-col items-center justify-start w-14 transition-colors" :class="currentTab === 'itinerary' ? 'text-[#1e293b]' : 'text-slate-400'">
                         <i class="fa-solid fa-map-location-dot text-[17px] mb-[3px] transition-transform" :class="{'scale-110': currentTab === 'itinerary'}"></i>
                         <span class="text-[9.5px] font-bold leading-none">行程</span>
@@ -1444,18 +1442,13 @@
                                         </div>
                                     </div>
                                     <div class="w-1/2">
-                                        <label class="block text-[10px] font-bold text-slate-500 mb-1">花費類別</label>
+                                        <label class="flex items-center justify-between text-[10px] font-bold text-slate-500 mb-1">花費類別<button type="button" @click.stop="openCatManager" class="text-[10px] font-bold text-[#1A5F8A]"><i class="fa-solid fa-pen mr-0.5 text-[8px]"></i>管理</button></label>
                                         <div class="relative">
-                                            <select v-model="selectedSpot.costCategory" class="w-full min-w-0 bg-white border border-slate-200 shadow-sm rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-brand appearance-none h-[36px]">
+                                            <select :value="selectedSpot.costCategory" @change="onCostCategoryChange($event)" class="w-full min-w-0 bg-white border border-slate-200 shadow-sm rounded-xl px-3 py-2 text-xs font-bold outline-none focus:border-brand appearance-none h-[36px]">
                                                 <option value="">未分類</option>
-                                                <option value="食物">🍔 食物</option>
-                                                <option value="伴手禮">🎁 伴手禮</option>
-                                                <option value="購物">🛍️ 購物</option>
-                                                <option value="住宿">🏨 住宿</option>
-                                                <option value="交通">🚆 交通</option>
-                                                <option value="活動">🎫 活動/門票</option>
-                                                <option v-for="c in customCostCategories" :key="c" :value="c">🏷️ {{ c }}</option>
-                                                <option value="自訂">+ 新增自訂類別...</option>
+                                                <option v-for="c in costCategoryList" :key="'cc'+c.name" :value="c.name">{{ c.emoji }} {{ c.name }}</option>
+                                                <option v-if="selectedSpot.costCategory && !costCategoryList.some(c => c.name === selectedSpot.costCategory)" :value="selectedSpot.costCategory">{{ catEmoji(selectedSpot.costCategory) }} {{ selectedSpot.costCategory }}</option>
+                                                <option value="__manage">✎ 新增 / 編輯類別…</option>
                                             </select>
                                             <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none">
                                                 <i class="fa-solid fa-chevron-down text-[10px] text-slate-400"></i>
@@ -1534,14 +1527,7 @@
                                 </div>
 
                                 <!-- 自訂管理區 -->
-                                <div v-if="selectedSpot.costCategory === '自訂' || selectedSpot.payer === '自訂' || selectedSpot.paymentMethod === '自訂'" class="bg-slate-50 p-3 rounded-lg border border-slate-200 mt-2">
-                                    <div v-if="selectedSpot.costCategory === '自訂'" class="mb-3 last:mb-0">
-                                        <label class="block text-[10px] font-bold text-slate-500 mb-1">新增自訂類別</label>
-                                        <div class="flex">
-                                            <input type="text" v-model="tempCustomCostCategory" placeholder="輸入類別名稱..." class="flex-1 min-w-0 bg-white border border-slate-200 rounded-l-lg px-2 py-1.5 text-xs outline-none">
-                                            <button type="button" @click.stop="addCustomOption('costCategory')" class="bg-slate-700 text-white px-3 rounded-r-lg text-xs font-bold shrink-0">新增</button>
-                                        </div>
-                                    </div>
+                                <div v-if="selectedSpot.payer === '自訂' || selectedSpot.paymentMethod === '自訂'" class="bg-slate-50 p-3 rounded-lg border border-slate-200 mt-2">
                                     <div v-if="selectedSpot.payer === '自訂'" class="mb-3 last:mb-0">
                                         <label class="block text-[10px] font-bold text-slate-500 mb-1">新增同行者 (付款人)</label>
                                         <div class="flex">
@@ -1559,12 +1545,9 @@
                                 </div>
                                 
                                 <!-- 顯示已自訂的清單供刪除 -->
-                                <div v-if="customCostCategories.length > 0 || customPayers.length > 0 || customPaymentMethods.length > 0" class="pt-2 border-t border-slate-100 mt-2">
+                                <div v-if="customPayers.length > 0 || customPaymentMethods.length > 0" class="pt-2 border-t border-slate-100 mt-2">
                                     <p class="text-[9px] text-slate-400 font-bold mb-1">已新增的項目 (點擊刪除)：</p>
                                     <div class="flex flex-wrap gap-1">
-                                        <span v-for="c in customCostCategories" :key="'cat-'+c" class="inline-flex items-center bg-white border border-slate-200 text-slate-500 text-[10px] px-1.5 py-0.5 rounded shadow-sm">
-                                            🏷️ {{ c }} <i @click.stop="removeCustomOption('costCategory', c)" class="fa-solid fa-xmark ml-1.5 cursor-pointer hover:text-red-400"></i>
-                                        </span>
                                         <span v-for="p in customPayers" :key="'pay-'+p" class="inline-flex items-center bg-white border border-slate-200 text-slate-500 text-[10px] px-1.5 py-0.5 rounded shadow-sm">
                                             👤 {{ p }} <i @click.stop="removeCustomOption('payer', p)" class="fa-solid fa-xmark ml-1.5 cursor-pointer hover:text-red-400"></i>
                                         </span>
@@ -1799,34 +1782,40 @@
                                 </div>
                             </div>
 
-                            <!-- 📸 獨立每張照片的機位與相片系統 -->
+                            <!-- 📸 照片 -->
                             <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
-                                <label class="block text-xs font-bold text-slate-700 mb-2"><i class="fa-solid fa-camera mr-1 text-slate-400"></i> 上傳照片與機位敘述</label>
-                                
-                                <div class="space-y-4 mb-4">
-                                    <div v-for="(imgObj, idx) in selectedSpot.images" :key="idx" class="bg-slate-50 p-2 rounded-xl border border-slate-200">
-                                        <div class="relative w-full h-32 rounded-lg overflow-hidden mb-2">
-                                            <img :src="imgObj.url || imgObj" :style="{ objectPosition: '50% ' + (imgObj.pos || 50) + '%' }" class="w-full h-full object-cover">
-                                            <button type="button" @click.stop="removeImage(idx)" class="absolute top-2 right-2 bg-red-400 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs shadow-md"><i class="fa-solid fa-xmark"></i></button>
-                                            
-                                            <div v-if="selectedSpot.coverImage !== (imgObj.url || imgObj)" @click.stop="selectedSpot.coverImage = (imgObj.url || imgObj)" class="absolute bottom-2 left-2 right-2 bg-black/60 text-white text-[11px] text-center rounded py-1 cursor-pointer font-bold backdrop-blur-sm">設為封面卡片</div>
-                                            <div v-else class="absolute bottom-2 left-2 right-2 bg-brand text-white text-[11px] text-center rounded py-1 font-bold shadow-sm">⭐ 目前為封面</div>
+                                <div class="flex items-center justify-between mb-3">
+                                    <label class="text-xs font-bold text-slate-700"><i class="fa-solid fa-camera mr-1 text-slate-400"></i> 照片<span v-if="selectedSpot.images && selectedSpot.images.length" class="text-slate-400 font-sans ml-1">{{ selectedSpot.images.length }}</span></label>
+                                    <label class="text-[11px] font-bold px-2.5 py-1 rounded-full cursor-pointer active:scale-95" :style="{ backgroundColor: currentTheme.soft, color: currentTheme.text }">
+                                        <i class="fa-solid fa-plus mr-1"></i>新增照片
+                                        <input type="file" accept="image/*" multiple @change="handleImageUpload" class="hidden">
+                                    </label>
+                                </div>
+
+                                <div v-if="selectedSpot.images && selectedSpot.images.length" class="space-y-3">
+                                    <div v-for="(imgObj, idx) in selectedSpot.images" :key="'ph'+idx + (imgObj.pid || '')" class="rounded-xl overflow-hidden border border-slate-200 bg-slate-50">
+                                        <!-- 和行程卡片封面同比例：直接拖曳照片調整要露出的位置 -->
+                                        <div class="relative w-full overflow-hidden bg-slate-200 select-none" style="aspect-ratio: 2.15 / 1; touch-action: none; cursor: grab;"
+                                             @pointerdown="startPhotoDrag($event, imgObj)" @pointermove="movePhotoDrag($event)" @pointerup="endPhotoDrag" @pointercancel="endPhotoDrag" @pointerleave="endPhotoDrag">
+                                            <img :src="imgObj.url || imgObj" :style="{ objectPosition: '50% ' + (imgObj.pos == null ? 50 : imgObj.pos) + '%' }" class="w-full h-full object-cover pointer-events-none" draggable="false">
+                                            <div v-if="photoDrag.obj === imgObj" class="absolute inset-0 pointer-events-none" style="background: linear-gradient(transparent 33%, rgba(255,255,255,.35) 33.3%, transparent 33.6%, transparent 66.4%, rgba(255,255,255,.35) 66.6%, transparent 67%);"></div>
+                                            <span class="absolute left-2 bottom-2 text-[10px] font-bold text-white bg-black/45 rounded-full px-2 py-1 pointer-events-none"><i class="fa-solid fa-up-down mr-1"></i>上下拖曳調整位置</span>
+                                            <span v-if="isCoverImage(imgObj)" class="absolute left-2 top-2 text-[10px] font-bold text-white rounded-full px-2 py-1 pointer-events-none" :style="{ backgroundColor: currentTheme.accent, color: currentTheme.onAccent }"><i class="fa-solid fa-star mr-1"></i>封面</span>
                                         </div>
-                                        <div class="mb-2">
-                                            <input type="text" v-model="imgObj.desc" placeholder="輸入這張照片的專屬描述或機位..." class="w-full min-w-0 bg-white border border-slate-200 rounded px-2 py-1.5 text-[11px] outline-none focus:border-brand">
-                                        </div>
-                                        <div class="flex items-center space-x-2 px-1">
-                                            <i class="fa-solid fa-crop-simple text-slate-400 text-[10px]"></i>
-                                            <input type="range" min="0" max="100" v-model="imgObj.pos" class="w-full accent-brand h-1">
+                                        <div class="flex items-center gap-2 p-2">
+                                            <input type="text" v-model="imgObj.desc" placeholder="照片說明或機位（選填）" class="flex-1 min-w-0 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-[12px] outline-none focus:border-brand">
+                                            <button v-if="!isCoverImage(imgObj)" type="button" @click.stop="setCoverImage(imgObj)" class="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-400 flex items-center justify-center shrink-0" title="設為封面"><i class="fa-regular fa-star text-[12px]"></i></button>
+                                            <button type="button" @click.stop="imgObj.pos = 50" class="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-400 flex items-center justify-center shrink-0" title="置中"><i class="fa-solid fa-crosshairs text-[12px]"></i></button>
+                                            <button type="button" @click.stop="removeImage(idx)" class="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-red-400 flex items-center justify-center shrink-0" title="刪除"><i class="fa-regular fa-trash-can text-[12px]"></i></button>
                                         </div>
                                     </div>
                                 </div>
-
-                                <label class="w-full h-12 border-2 border-dashed border-slate-300 rounded-xl flex items-center justify-center text-slate-500 cursor-pointer hover:bg-slate-50 transition-colors bg-white shadow-sm">
-                                    <i class="fa-solid fa-plus mr-2"></i>
-                                    <span class="text-xs font-bold">加入新照片</span>
+                                <label v-else class="w-full h-24 border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center text-slate-400 cursor-pointer">
+                                    <i class="fa-regular fa-image text-xl mb-1"></i>
+                                    <span class="text-[11px] font-bold">點這裡加入照片</span>
                                     <input type="file" accept="image/*" multiple @change="handleImageUpload" class="hidden">
                                 </label>
+                                <p v-if="sync.enabled" class="text-[10px] font-bold text-slate-400 mt-2"><i class="fa-solid fa-cloud mr-1"></i>照片會自動壓縮並同步給旅伴</p>
                             </div>
 
                             <!-- ✅ 清單：必吃・必買・必拍・必做 -->
@@ -2081,6 +2070,48 @@
                     </div>
                 </div>
 
+                <!-- 🏷️ 花費類別管理 -->
+                <div v-if="showCatManager" @click.self="closeCatManager" class="fixed inset-0 z-[90] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+                    <div class="bg-white w-full max-w-[400px] rounded-[22px] max-h-[82vh] flex flex-col overflow-hidden animate-pop-in shadow-2xl">
+                        <div class="px-5 pt-5 pb-3 border-b border-slate-100 shrink-0 relative">
+                            <button type="button" @click="closeCatManager" class="absolute top-4 right-4 w-8 h-8 bg-slate-50 rounded-full text-slate-500 flex justify-center items-center"><i class="fa-solid fa-xmark"></i></button>
+                            <h3 class="text-base font-bold text-slate-800">花費類別</h3>
+                            <p class="text-[11px] font-bold text-slate-400 mt-1">點左邊的圖示可以換；名稱可以直接改</p>
+                        </div>
+                        <div class="overflow-y-auto overscroll-contain px-4 py-3 flex-1 min-h-0">
+                            <div class="rounded-xl border border-slate-100 divide-y divide-slate-100">
+                                <div v-for="(c, ci) in costCategoryList" :key="'cm'+ci">
+                                    <div class="flex items-center px-2.5 py-2">
+                                        <button type="button" @click="emojiPickFor = (emojiPickFor === ci ? -1 : ci)" class="w-9 h-9 rounded-lg border text-[18px] flex items-center justify-center shrink-0 mr-2"
+                                                :class="emojiPickFor === ci ? 'border-slate-700 bg-slate-50' : 'border-slate-200 bg-white'">{{ c.emoji || '🏷️' }}</button>
+                                        <input type="text" v-model="c.name" @focus="c._orig = c._orig || c.name" class="flex-1 min-w-0 text-[14px] font-bold text-slate-700 bg-transparent outline-none">
+                                        <span v-if="catUsage(c._orig || c.name)" class="text-[10px] font-bold text-slate-300 font-sans mr-1.5 shrink-0">{{ catUsage(c._orig || c.name) }} 筆</span>
+                                        <button type="button" @click="removeCostCategory(ci)" class="w-7 h-7 text-slate-300 hover:text-red-400 shrink-0"><i class="fa-regular fa-trash-can text-[12px]"></i></button>
+                                    </div>
+                                    <div v-if="emojiPickFor === ci" class="px-2.5 pb-3">
+                                        <div class="grid grid-cols-8 gap-1">
+                                            <button type="button" v-for="em in emojiChoices" :key="'em'+em" @click="c.emoji = em; emojiPickFor = -1" class="h-9 rounded-lg text-[19px] flex items-center justify-center active:bg-slate-100" :class="c.emoji === em ? 'bg-slate-100 ring-1 ring-slate-300' : ''">{{ em }}</button>
+                                        </div>
+                                        <div class="flex items-center mt-2">
+                                            <span class="text-[10px] font-bold text-slate-400 mr-2">或自己輸入表情符號</span>
+                                            <input type="text" :value="c.emoji" @input="c.emoji = firstEmoji($event.target.value) || c.emoji" maxlength="4" class="w-14 text-center text-[18px] bg-slate-50 border border-slate-200 rounded-lg py-0.5 outline-none">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2 mt-3">
+                                <span class="w-9 h-9 rounded-lg border border-dashed border-slate-300 text-[18px] flex items-center justify-center shrink-0">{{ newCatName ? catEmojiAuto(newCatName) : '＋' }}</span>
+                                <input type="text" v-model="newCatName" @keyup.enter="addCostCategory" placeholder="新增類別，例：藥妝、文創、生活小物" class="flex-1 min-w-0 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2 text-[13px] outline-none">
+                                <button type="button" @click="addCostCategory" class="text-[12px] font-bold px-3 py-2 rounded-lg bg-[#1e293b] text-white shrink-0">新增</button>
+                            </div>
+                            <button type="button" @click="resetCostCategories" class="w-full mt-3 text-[11px] font-bold text-slate-400 py-1.5"><i class="fa-solid fa-rotate-left mr-1"></i>恢復預設類別</button>
+                        </div>
+                        <div class="px-4 pb-4 pt-2 shrink-0">
+                            <button type="button" @click="closeCatManager" class="w-full text-[13px] font-bold py-3 rounded-xl bg-[#1E4E79] text-white">完成</button>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- 機票橫向放大 -->
                 <div v-if="ticketZoom && tripInfo.flights && tripInfo.flights.length === 2" @click="ticketZoom = false" class="fixed inset-0 z-[97] bg-slate-900/85 backdrop-blur-sm flex items-center justify-center overflow-hidden">
                     <div class="shrink-0" style="width: min(92vh, 205vw, 1100px); transform: rotate(90deg);" @click.stop="ticketSide = ticketSide === 0 ? 1 : 0">
@@ -2278,6 +2309,7 @@
         let _expenseChart = null;
         let _pdfDoc = null;
         let _fbApp = null, _fbDb = null, _fbRef = null, _fbUnsub = null, _syncTimer = null, _syncLast = {}, _syncPendingRemote = null;
+        let _photosUp = null, _photoFetching = false;
         const _geoCache = {};
 
         // ===== 資料儲存 =====
@@ -2545,6 +2577,8 @@
                     },
                     
                     customCostCategories: [], customPayers: [], customPaymentMethods: [], customTransits: [],
+                    costCategoryList: DEFAULT_COST_CATEGORIES.map(c => ({ ...c })), showCatManager: false, emojiPickFor: -1, newCatName: '',
+                    emojiChoices: ['🍔','🍜','🍣','🍱','🍙','🍡','🍰','🍦','☕','🍺','🥩','🍓','🎁','🛍️','👗','👟','💄','💊','🧴','📚','✏️','🧸','🎮','📷','🏨','🚆','🚃','🚕','✈️','🚌','⛴️','🚲','🎫','🎢','🏯','⛩️','♨️','💆','🎤','🎨','💳','💱','📶','🧳','🛡️','🪙','🏷️','⭐'],
                     tempCustomCostCategory: '', tempCustomPayer: '', tempCustomPaymentMethod: '', tempCustomTransit: '',
                     
                     newTagType: '必吃', newTagText: '', newCheckKind: '必吃', newCheckText: '', checklistKinds: ['必吃', '必買', '必拍', '必做'],
@@ -2588,7 +2622,7 @@
                     sortableInstances: {},
                     isDraggingSpot: false, justDraggedSpot: false,
                     showExpenseDetail: false, expenseDetailKey: '',
-                    showSwapModal: false, toastMsg: '', showSettleDetail: false, airlineGroups: AIRLINE_GROUPS,
+                    showSwapModal: false, toastMsg: '', showSettleDetail: false, airlineGroups: AIRLINE_GROUPS, photoDrag: { obj: null },
                     sync: { enabled: false, config: null, code: '', status: 'off', lastAt: 0, error: '', deviceId: '', joining: false }, syncConfigText: '', syncInviteText: '', isApplyingRemote: false,
                     konbiniBrands: ['7-11', '全家', 'LAWSON'],
                     konbiniSuggestions: [
@@ -2799,7 +2833,7 @@
                     return { total: row ? row.value : 0, pct: row ? row.pct : 0, color: row ? row.color : '#7E93A3', count };
                 },
                 expenseFilterLabel() {
-                    return { category: '大類別', payer: '付款人', method: '付款方式', tag: '花費標籤' }[this.expenseFilterType] || '';
+                    return { category: '大類別', payer: '付款人', method: '付款方式', tag: '花費類別' }[this.expenseFilterType] || '';
                 },
                 expensePalette() {
                     return this.currentTheme.palette;
@@ -2840,6 +2874,7 @@
                 todoCategories: { handler() { this.autoSave(); }, deep: true },
                 settings: { handler() { this.applyTheme(); this.autoSave(); }, deep: true },
                 customCostCategories: { handler() { this.autoSave(); }, deep: true },
+                costCategoryList: { handler() { this.autoSave(); }, deep: true },
                 customPayers: { handler() { this.autoSave(); }, deep: true },
                 customPaymentMethods: { handler() { this.autoSave(); }, deep: true },
                 customTransits: { handler() { this.autoSave(); }, deep: true },
@@ -2966,6 +3001,9 @@
                         }));
                         this.todoCategories = data.todoCategories || [];
                         this.customCostCategories = data.customCostCategories || [];
+                        if (Array.isArray(data.costCategoryList) && data.costCategoryList.length) this.costCategoryList = data.costCategoryList;
+                        else this.costCategoryList = DEFAULT_COST_CATEGORIES.map(c => ({ ...c })).concat(this.customCostCategories.filter(n => !DEFAULT_COST_CATEGORIES.some(d => d.name === n)).map(n => ({ name: n, emoji: this.catEmojiAuto(n) })));
+                        (this.itinerary || []).forEach(d => (d.spots || []).forEach(sp => { if (sp.costCategory === '活動') sp.costCategory = '活動/門票'; }));
                         this.customPayers = data.customPayers || [];
                         this.customPaymentMethods = data.customPaymentMethods || [];
                         this.customTransits = data.customTransits || [];
@@ -2999,7 +3037,7 @@
                             tripInfo: this.tripInfo, itinerary: this.itinerary, todoCategories: this.todoCategories,
                             appState: this.appState === 'setup' && this.isGenerated ? 'main' : this.appState, isGenerated: this.isGenerated,
                             customCostCategories: this.customCostCategories, customPayers: this.customPayers,
-                            customPaymentMethods: this.customPaymentMethods, customTransits: this.customTransits, settings: this.settings
+                            customPaymentMethods: this.customPaymentMethods, customTransits: this.customTransits, settings: this.settings, costCategoryList: this.costCategoryList
                         }));
                         await saveToDB(DB_KEY, dataToSave);
                     } catch (err) { console.warn('save failed', err); }
@@ -3117,6 +3155,7 @@
                             this.applyItineraryPlan(plan);
                         }
                         
+                        this.syncFlightSpots();
                         this.appState = 'main'; 
                         this.isEditing = false;
                         this._editSnapshot = null;
@@ -3963,10 +4002,10 @@
                     return spot.costCategory || (spot.type === 'hotel' ? '住宿' : (spot.type === 'transit' ? '交通' : (spot.type === 'food' ? '食物' : (spot.type === 'shopping' ? '購物' : (spot.type === 'konbini' ? '超商' : '未分類')))));
                 },
                 getExpenseKey(spot) {
-                    if (this.expenseFilterType === 'category') return this.getExpenseCategory(spot);
+                    if (this.expenseFilterType === 'category') return this.getSpotTypeName(spot.type);   // 大類別：景點、美食、交通、住宿…
                     if (this.expenseFilterType === 'payer') return spot.payer || '未設定';
                     if (this.expenseFilterType === 'method') return spot.paymentMethod || '現金';
-                    if (this.expenseFilterType === 'tag') return spot.checklist && spot.checklist.length > 0 ? spot.checklist[0].kind : (spot.tags && spot.tags.length > 0 ? spot.tags[0].type : '無標籤');
+                    if (this.expenseFilterType === 'tag') { const c = spot.costCategory; return c ? (c === '活動' ? '活動/門票' : c) : '未分類'; }   // 花費類別：伴手禮、活動/門票…
                     return '未分類';
                 },
                 formatPct(p) {
@@ -4143,6 +4182,7 @@
                     const same = Object.keys(ri).length === Object.keys(last).length && Object.keys(ri).every(k => last[k] && last[k].d === ri[k].d && last[k].u === ri[k].u);
                     if (same) return;   // 自己剛送出的內容，不用重畫
                     const now = Date.now();
+                    syncEnsurePhotoIds(this);
                     const localDiff = syncDiff(syncItemsFromState(this.syncStateSnapshot()), _syncLast || {}, now);
                     const merged = syncMerge(remote, localDiff);
                     this.applySyncDoc(merged);
@@ -4152,7 +4192,7 @@
                 },
                 syncStateSnapshot() {
                     return { tripInfo: this.tripInfo, itinerary: this.itinerary, todoCategories: this.todoCategories, customPayers: this.customPayers,
-                             customCostCategories: this.customCostCategories, customPaymentMethods: this.customPaymentMethods, customTransits: this.customTransits };
+                             customCostCategories: this.customCostCategories, customPaymentMethods: this.customPaymentMethods, customTransits: this.customTransits, costCategoryList: this.costCategoryList };
                 },
                 applySyncDoc(doc) {
                     const b = syncBuildState(doc, this.syncStateSnapshot());
@@ -4163,12 +4203,14 @@
                     if (plan.result.length) this.applyItineraryPlan(plan);
                     if (b.lists) {
                         ['customPayers', 'customCostCategories', 'customPaymentMethods', 'customTransits'].forEach(k => { if (Array.isArray(b.lists[k])) this[k] = b.lists[k]; });
+                        if (Array.isArray(b.lists.costCategoryList) && b.lists.costCategoryList.length && !this.showCatManager) this.costCategoryList = b.lists.costCategoryList;
                     }
                     if (b.todoCategories && b.todoCategories.length) this.todoCategories = b.todoCategories;
                     this.isGenerated = true;
                     if (this.appState === 'setup' && !this.isEditing) this.appState = 'main';
                     this.$nextTick(() => {
                         this.isApplyingRemote = false;
+                        this.fetchMissingPhotos();
                         if (this.currentTab === 'itinerary') this.initSortableItinerary();
                         if (this.currentTab === 'todo') this.initSortableTodo();
                     });
@@ -4182,6 +4224,8 @@
                     if (!this.sync.enabled) return;
                     if (!_fbRef) { const ok = await this.connectSync(); if (!ok) return; }
                     if (this.sync.joining) return;
+                    syncEnsurePhotoIds(this);
+                    try { await this.uploadPendingPhotos(); } catch (e) { this.sync.status = 'error'; this.sync.error = this.syncErrorText(e); }
                     const diff = syncDiff(syncItemsFromState(this.syncStateSnapshot()), _syncLast || {}, Date.now());
                     if (!Object.keys(diff.changed).length && !Object.keys(diff.tomb).length) return;
                     this.sync.status = 'syncing';
@@ -4205,6 +4249,50 @@
                         this.sync.status = 'error'; this.sync.error = this.syncErrorText(e);
                         clearTimeout(_syncTimer); _syncTimer = setTimeout(() => this.pushSync(), 30000);
                     }
+                },
+                // --- 照片同步：每張照片存成雲端上的一筆，旅伴的手機下載一次就會存在本機 ---
+                photosUploadedSet() {
+                    if (!_photosUp) { try { _photosUp = new Set(JSON.parse(localStorage.getItem('tripApp_photosUp') || '[]')); } catch (e) { _photosUp = new Set(); } }
+                    return _photosUp;
+                },
+                savePhotosUploaded() { try { localStorage.setItem('tripApp_photosUp', JSON.stringify(Array.from(this.photosUploadedSet()))); } catch (e) {} },
+                async uploadPendingPhotos() {
+                    if (!_fbRef) return;
+                    const up = this.photosUploadedSet();
+                    const todo = [];
+                    this.itinerary.forEach(d => (d.spots || []).forEach(sp => (sp.images || []).forEach(i => {
+                        if (i && i.pid && /^data:/.test(i.url || '') && !up.has(i.pid) && !todo.some(t => t.pid === i.pid)) todo.push(i);
+                    })));
+                    for (const i of todo) {
+                        if (i.url.length > 950000) continue;   // 單張太大就不傳（新上傳的照片都會先壓縮，正常不會超過）
+                        await _fbRef.collection('photos').doc(i.pid).set({ d: i.url, t: Date.now() });
+                        up.add(i.pid);
+                    }
+                    if (todo.length) this.savePhotosUploaded();
+                },
+                async fetchMissingPhotos() {
+                    if (!_fbRef || _photoFetching) return;
+                    const need = new Set();
+                    this.itinerary.forEach(d => (d.spots || []).forEach(sp => (sp.images || []).forEach(i => { if (i && i.pid && !i.url) need.add(i.pid); })));
+                    if (!need.size) return;
+                    _photoFetching = true;
+                    try {
+                        const up = this.photosUploadedSet();
+                        for (const pid of need) {
+                            const snap = await _fbRef.collection('photos').doc(pid).get();
+                            if (!snap.exists) continue;
+                            const url = snap.data().d;
+                            up.add(pid);
+                            this.itinerary.forEach(d => (d.spots || []).forEach(sp => {
+                                (sp.images || []).forEach(i => { if (i.pid === pid) i.url = url; });
+                                if (sp.coverPid === pid || (!sp.coverImage && sp.images && sp.images[0] && sp.images[0].pid === pid)) sp.coverImage = url;
+                            }));
+                        }
+                        this.savePhotosUploaded();
+                    } catch (e) {
+                        console.warn('photo fetch failed', e);
+                        if (/permission/i.test((e && (e.code || e.message)) || '')) { this.sync.status = 'error'; this.sync.error = '照片沒有權限讀取：請到 Firebase 更新「規則」（新版規則多了照片的部分）'; }
+                    } finally { _photoFetching = false; }
                 },
                 randomCode() {
                     const a = new Uint8Array(18); (window.crypto || window.msCrypto).getRandomValues(a);
@@ -4276,6 +4364,67 @@
                     this.saveSyncSettings();
                 },
 
+                // 花費類別圖示：預設的固定，自己新增的依名稱自動配
+                catEmoji(name) {
+                    const hit = (this.costCategoryList || []).find(c => c.name === name);
+                    if (hit && hit.emoji) return hit.emoji;
+                    return this.catEmojiAuto(name);
+                },
+                catEmojiAuto(name) {
+                    const n = String(name || '');
+                    const fixed = { '食物': '🍔', '伴手禮': '🎁', '購物': '🛍️', '住宿': '🏨', '交通': '🚆', '活動': '🎫', '活動/門票': '🎫', '未分類': '🏷️' };
+                    if (fixed[n]) return fixed[n];
+                    const rules = [
+                        [/票|門票|樂園|迪士尼|展|博物館|美術館|演唱會/, '🎫'], [/藥|藥妝|保健/, '💊'], [/美妝|化妝|保養|香水/, '💄'], [/衣|服|鞋|包|飾品|精品/, '👗'],
+                        [/咖啡|cafe/i, '☕'], [/甜點|蛋糕|甜/, '🍰'], [/酒|居酒屋|bar/i, '🍺'], [/超商|便利|零食/, '🍙'], [/拉麵|麵/, '🍜'], [/壽司|海鮮/, '🍣'],
+                        [/燒肉|牛|肉/, '🥩'], [/餐|吃|食|飯/, '🍽️'], [/suica|西瓜卡|交通卡|儲值/i, '💳'], [/計程|taxi|uber/i, '🚕'], [/電車|地鐵|新幹線|jr|車票/i, '🚃'],
+                        [/機票|飛機|航空/, '✈️'], [/溫泉|湯/, '♨️'], [/按摩|spa|美容/i, '💆'], [/網路|sim|wifi|esim/i, '📶'], [/保險/, '🛡️'], [/電器|3c|相機|耳機/i, '📷'],
+                        [/書|雜誌|文具/, '📚'], [/扭蛋|玩具|公仔|動漫|周邊/, '🧸'], [/換匯|手續費|匯/, '💱'], [/小費|寄放|置物|行李/, '🧳'], [/禮|送/, '🎁'], [/寺|神社|御守/, '⛩️']
+                    ];
+                    for (const [re, e] of rules) if (re.test(n)) return e;
+                    return '🏷️';
+                },
+                // --- 花費類別管理 ---
+                onCostCategoryChange(e) {
+                    const v = e.target.value;
+                    if (v === '__manage') { e.target.value = this.selectedSpot.costCategory || ''; this.openCatManager(); return; }
+                    this.selectedSpot.costCategory = v;
+                },
+                openCatManager() { this.costCategoryList.forEach(c => { c._orig = c.name; }); this.emojiPickFor = -1; this.newCatName = ''; this.showCatManager = true; },
+                catUsage(name) {
+                    let n = 0; this.itinerary.forEach(d => (d.spots || []).forEach(sp => { if (sp.costCategory === name) n++; })); return n;
+                },
+                firstEmoji(t) { const m = String(t || '').match(/\p{Extended_Pictographic}(\uFE0F|\u200D\p{Extended_Pictographic})*/u); return m ? m[0] : ''; },
+                addCostCategory() {
+                    const n = this.newCatName.trim(); if (!n) return;
+                    if (this.costCategoryList.some(c => c.name === n)) return alert('已經有這個類別了');
+                    this.costCategoryList.push({ name: n, emoji: this.catEmojiAuto(n), _orig: n });
+                    this.newCatName = '';
+                },
+                removeCostCategory(i) {
+                    const c = this.costCategoryList[i]; const used = this.catUsage(c._orig || c.name);
+                    if (!confirm(used ? `「${c.name}」已用在 ${used} 筆花費，刪除後這些會變成「未分類」。確定刪除？` : `刪除「${c.name}」？`)) return;
+                    this.itinerary.forEach(d => (d.spots || []).forEach(sp => { if (sp.costCategory === (c._orig || c.name)) sp.costCategory = ''; }));
+                    this.costCategoryList.splice(i, 1);
+                },
+                resetCostCategories() {
+                    if (!confirm('恢復成預設的 6 個類別？（你新增的類別會被移除，已使用的花費會保留原本的名稱）')) return;
+                    this.costCategoryList = DEFAULT_COST_CATEGORIES.map(c => ({ ...c, _orig: c.name }));
+                },
+                closeCatManager() {
+                    // 改名的類別，同步更新已記帳的花費
+                    const seen = new Set();
+                    this.costCategoryList = this.costCategoryList.filter(c => { c.name = (c.name || '').trim(); if (!c.name || seen.has(c.name)) return false; seen.add(c.name); return true; });
+                    this.costCategoryList.forEach(c => {
+                        if (c._orig && c._orig !== c.name) {
+                            this.itinerary.forEach(d => (d.spots || []).forEach(sp => { if (sp.costCategory === c._orig) sp.costCategory = c.name; }));
+                            if (this.selectedSpot && this.selectedSpot.costCategory === c._orig) this.selectedSpot.costCategory = c.name;
+                        }
+                        delete c._orig;
+                    });
+                    this.customCostCategories = this.costCategoryList.filter(c => !DEFAULT_COST_CATEGORIES.some(d => d.name === c.name)).map(c => c.name);
+                    this.showCatManager = false; this.emojiPickFor = -1;
+                },
                 // --- 航空公司下拉選單 ---
                 isCustomAirline(name) { return !!name && !AIRLINE_GROUPS.some(g => g.list.includes(name)); },
                 airlineSelectValue(name, custom) { if (custom || this.isCustomAirline(name)) return '__other'; return name || ''; },
@@ -4643,6 +4792,46 @@
 
                 // --- Form Actions ---
                 hasCustomOrder(dayIndex) { return this.itinerary[dayIndex] && this.itinerary[dayIndex].customSorted === true; },
+                // 旅程設定的去程／回程機票 → 自動在當天加上一張「交通・飛機」卡片（之後改機票也會跟著更新）
+                syncFlightSpots() {
+                    const fl = this.tripInfo.flights || [];
+                    const passenger = (this.tripInfo.passengerName || '').trim();
+                    [['out', 0, '去程'], ['back', 1, '回程']].forEach(([tag, i, label]) => {
+                        const f = fl[i];
+                        if (!f || !f.date || !(f.flightNo || f.depCode || f.arrCode)) return;
+                        const day = this.itinerary.find(d => d.rawDate === f.date);
+                        if (!day) return;
+                        let spot = null;
+                        this.itinerary.forEach(d => {
+                            const idx = (d.spots || []).findIndex(sp => sp.fromFlight === tag);
+                            if (idx >= 0) { spot = d.spots[idx]; if (d !== day) { d.spots.splice(idx, 1); day.spots.push(spot); } }
+                        });
+                        if (!spot) spot = (day.spots || []).find(sp => sp.type === 'transit' && sp.transitMethod === '飛機' && !sp.fromFlight);
+                        const isNew = !spot;
+                        if (isNew) {
+                            spot = { id: this.makeSpotId(), type: 'transit', name: '', startTime: '', endTime: '', durationH: '', durationM: '', desc: '', location: '', googleMapUrl: '', hours: '', warning: '',
+                                     cost: '', currency: 'TWD', costCategory: '交通', payer: '', paymentMethod: '信用卡', lat: null, lng: null, photoSpotDesc: '', coverImage: '', coverPosition: 50,
+                                     tags: [], checklist: [], links: [], images: [], files: [], legs: [], seats: [], phone: '', transport: '', bookingRef: '' };
+                            day.spots.push(spot);
+                        }
+                        const dep = (f.depCode || '').toUpperCase(), arr = (f.arrCode || '').toUpperCase();
+                        Object.assign(spot, {
+                            fromFlight: tag, transitMethod: '飛機', airline: f.airline || spot.airline || '', flightNo: (f.flightNo || '').toUpperCase(),
+                            depAirport: dep, arrAirport: arr, depTerminal: f.depTerminal || '', arrTerminal: f.arrTerminal || '',
+                            startTime: f.depTime || spot.startTime || '', endTime: f.arrTime || spot.endTime || '',
+                            bookingRef: f.bookingRef || spot.bookingRef || ''
+                        });
+                        if (isNew || !spot.name) spot.name = `${label}航班 ${dep} → ${arr}`;
+                        if (passenger && f.seat) {
+                            if (!Array.isArray(spot.seats)) spot.seats = [];
+                            const me = spot.seats.find(x => (x.name || '').trim().toUpperCase() === passenger.toUpperCase());
+                            if (me) me.seat = f.seat;
+                            else if (spot.seats.length && !spot.seats[0].name && !spot.seats[0].seat) spot.seats[0] = { name: passenger, seat: f.seat };
+                            else spot.seats.unshift({ name: passenger, seat: f.seat });
+                        }
+                        if (!day.customSorted) day.spots.sort((a, b) => (a.startTime || a.checkInTime || '23:59').localeCompare(b.startTime || b.checkInTime || '23:59'));
+                    });
+                },
                 autoSortCurrentDay() {
                     this.itinerary[this.activeDay].spots.sort((a, b) => {
                         let tA = a.startTime || a.checkInTime || '23:59';
@@ -4814,6 +5003,30 @@
                     this.newLinkTitle = ''; this.newLinkUrl = '';
                 },
                 
+                // --- 照片：拖曳調整位置 ---
+                startPhotoDrag(e, imgObj) {
+                    const frame = e.currentTarget, img = frame.querySelector('img');
+                    if (!img || !img.naturalWidth) return;
+                    const fw = frame.clientWidth, fh = frame.clientHeight;
+                    const rh = fw * img.naturalHeight / img.naturalWidth;   // 照片撐滿寬度時的高度
+                    const overflow = Math.max(0, rh - fh);
+                    if (typeof imgObj !== 'object') return;
+                    this.photoDrag = { obj: imgObj, y: e.clientY, start: Number(imgObj.pos == null ? 50 : imgObj.pos), overflow };
+                    try { frame.setPointerCapture(e.pointerId); } catch (err) {}
+                },
+                movePhotoDrag(e) {
+                    const d = this.photoDrag;
+                    if (!d.obj || !d.overflow) return;
+                    const dy = e.clientY - d.y;
+                    d.obj.pos = Math.round(Math.max(0, Math.min(100, d.start - dy / d.overflow * 100)));
+                },
+                endPhotoDrag() { this.photoDrag = { obj: null }; },
+                isCoverImage(imgObj) { return !!this.selectedSpot.coverImage && this.selectedSpot.coverImage === (imgObj.url || imgObj); },
+                setCoverImage(imgObj) {
+                    this.selectedSpot.coverImage = imgObj.url || imgObj;
+                    this.selectedSpot.coverPosition = imgObj.pos == null ? 50 : imgObj.pos;
+                    if (imgObj.pid) this.selectedSpot.coverPid = imgObj.pid;
+                },
                 handleImageUpload(event) {
                     const files = event.target.files; if (!files || files.length === 0) return;
                     Array.from(files).forEach(file => {
@@ -4822,13 +5035,16 @@
                             const img = new Image();
                             img.onload = () => {
                                 const canvas = document.createElement('canvas'); let width = img.width, height = img.height;
-                                if (width > 600) { height = Math.round((height * 600) / width); width = 600; }
+                                if (width > 900) { height = Math.round((height * 900) / width); width = 900; }
                                 canvas.width = width; canvas.height = height; canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-                                const compressedData = canvas.toDataURL('image/jpeg', 0.6);
-                                this.selectedSpot.images.push({ url: compressedData, pos: 50, desc: '' });
+                                const compressedData = canvas.toDataURL('image/jpeg', 0.7);   // 約 80～150KB，同步也省空間
+                                const pid = 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+                                if (!Array.isArray(this.selectedSpot.images)) this.selectedSpot.images = [];
+                                this.selectedSpot.images.push({ url: compressedData, pos: 50, desc: '', pid });
                                 if(!this.selectedSpot.coverImage) {
                                     this.selectedSpot.coverImage = compressedData;
                                     this.selectedSpot.coverPosition = 50;
+                                    this.selectedSpot.coverPid = pid;
                                 }
                             }; img.src = e.target.result;
                         }; reader.readAsDataURL(file);
@@ -5050,7 +5266,7 @@
                         app: 'trip-app', backupVersion: 1, exportedAt: new Date().toISOString(),
                         tripInfo: this.tripInfo, itinerary: this.itinerary, todoCategories: this.todoCategories,
                         customCostCategories: this.customCostCategories, customPayers: this.customPayers,
-                        customPaymentMethods: this.customPaymentMethods, customTransits: this.customTransits, settings: this.settings,
+                        customPaymentMethods: this.customPaymentMethods, customTransits: this.customTransits, settings: this.settings, costCategoryList: this.costCategoryList,
                         appState: 'main', isGenerated: this.isGenerated
                     };
                     const d = new Date();
@@ -5129,13 +5345,27 @@
         function syncStripSpot(sp) {
             const o = {};
             Object.keys(sp).forEach(k => { if (!SYNC_MEDIA_KEYS.includes(k) && k !== '_u') o[k] = sp[k]; });
+            // 照片：只同步「編號＋位置＋說明」，照片本身另外存（每張一筆）
+            const imgs = (sp.images || []).filter(i => i && typeof i === 'object' && i.pid);
+            o.images = imgs.map(i => ({ pid: i.pid, pos: i.pos == null ? 50 : Number(i.pos), desc: i.desc || '' }));
+            const cov = imgs.find(i => i.url && i.url === sp.coverImage);
+            o.coverPid = cov ? cov.pid : (sp.coverPid || '');
             return o;
+        }
+        // 每張照片給一個編號（舊照片也補上）
+        function syncEnsurePhotoIds(st) {
+            (st.itinerary || []).forEach(d => (d.spots || []).forEach(sp => {
+                if (!Array.isArray(sp.images)) return;
+                sp.images = sp.images.map(i => typeof i === 'string' ? { url: i, pos: sp.coverImage === i ? (sp.coverPosition || 50) : 50, desc: '' } : i);
+                sp.images.forEach(i => { if (!i.pid) i.pid = 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); });
+            }));
         }
         // 把目前的行程變成 { 鍵: 內容字串 }
         function syncItemsFromState(st) {
             const items = {};
             items['trip'] = JSON.stringify(st.tripInfo || {});
-            items['lists'] = JSON.stringify({ customPayers: st.customPayers || [], customCostCategories: st.customCostCategories || [], customPaymentMethods: st.customPaymentMethods || [], customTransits: st.customTransits || [] });
+            items['lists'] = JSON.stringify({ customPayers: st.customPayers || [], customCostCategories: st.customCostCategories || [], customPaymentMethods: st.customPaymentMethods || [], customTransits: st.customTransits || [],
+                                              costCategoryList: (st.costCategoryList || []).map(c => ({ name: c.name, emoji: c.emoji })) });
             (st.itinerary || []).forEach(day => {
                 const key = day.rawDate || day.label;
                 const hero = day.hero ? Object.assign({}, day.hero) : null;
@@ -5175,9 +5405,10 @@
         function syncBuildState(doc, localState) {
             const items = doc.items || {};
             const get = (k) => { try { return items[k] ? JSON.parse(items[k].d) : null; } catch (e) { return null; } };
-            const media = {};
+            const media = {}, photoUrl = {};
             (localState.itinerary || []).forEach(d => (d.spots || []).forEach(sp => {
                 if (sp.id) { const m = {}; SYNC_MEDIA_KEYS.forEach(k => { if (sp[k] != null) m[k] = sp[k]; }); media[sp.id] = m; }
+                (sp.images || []).forEach(i => { if (i && i.pid && i.url) photoUrl[i.pid] = i.url; });
             }));
             const tripInfo = get('trip') || localState.tripInfo;
             const lists = get('lists') || {};
@@ -5186,7 +5417,15 @@
                 if (!k.startsWith('spot:')) return;
                 const sp = get(k); if (!sp) return;
                 const dayKey = sp.__day; delete sp.__day;
+                const remoteImgs = Array.isArray(sp.images) ? sp.images : null;
                 Object.assign(sp, { images: [], files: [], coverImage: '' }, media[sp.id] || {});
+                if (remoteImgs) {
+                    // 照片清單以雲端為準；照片檔案用這台手機已有的，沒有的稍後下載
+                    sp.images = remoteImgs.map(r => ({ pid: r.pid, pos: r.pos, desc: r.desc || '', url: photoUrl[r.pid] || '' }));
+                    const cov = sp.images.find(i => i.pid === sp.coverPid);
+                    sp.coverImage = cov && cov.url ? cov.url : (sp.images.length && sp.images[0].url ? sp.images[0].url : '');
+                    if (cov) sp.coverPosition = cov.pos;
+                }
                 (spotsByDay[dayKey] = spotsByDay[dayKey] || []).push(sp);
             });
             const dayKeys = Object.keys(items).filter(k => k.startsWith('day:')).map(k => k.slice(4));
@@ -5234,6 +5473,10 @@
             MNL: ['馬尼拉', 8, 'Manila', '尼諾伊艾奎諾國際機場'], KUL: ['吉隆坡', 8, 'Kuala Lumpur', '吉隆坡國際機場'],
             SGN: ['胡志明市', 7, 'Ho Chi Minh City', '新山一國際機場'], HAN: ['河內', 7, 'Hanoi', '內排國際機場'], DAD: ['峴港', 7, 'Da Nang', '峴港國際機場']
         };
+        const DEFAULT_COST_CATEGORIES = [
+            { name: '食物', emoji: '🍔' }, { name: '伴手禮', emoji: '🎁' }, { name: '購物', emoji: '🛍️' },
+            { name: '住宿', emoji: '🏨' }, { name: '交通', emoji: '🚆' }, { name: '活動/門票', emoji: '🎫' }
+        ];
         // 台灣人常搭的航空公司（下拉選單用，依地區分組）
         const AIRLINE_GROUPS = [{"g": "台灣", "list": ["中華航空", "長榮航空", "星宇航空", "台灣虎航", "華信航空", "立榮航空"]}, {"g": "日本", "list": ["日本航空", "全日空", "樂桃航空", "捷星日本", "春秋航空日本", "ZIPAIR"]}, {"g": "港澳", "list": ["國泰航空", "香港航空", "香港快運", "澳門航空"]}, {"g": "韓國", "list": ["大韓航空", "韓亞航空", "濟州航空", "德威航空", "真航空", "釜山航空"]}, {"g": "東南亞", "list": ["酷航", "亞洲航空", "新加坡航空", "泰國航空", "泰國獅子航空", "越捷航空", "越南航空", "菲律賓航空", "宿霧太平洋航空", "馬來西亞航空"]}, {"g": "其他", "list": ["聯合航空", "達美航空", "阿聯酋航空", "土耳其航空"]}];
         const AIRLINES_EN = {"中華航空": "CHINA AIRLINES", "長榮航空": "EVA AIR", "星宇航空": "STARLUX AIRLINES", "台灣虎航": "TIGERAIR TAIWAN", "華信航空": "MANDARIN AIRLINES", "立榮航空": "UNI AIR", "日本航空": "JAPAN AIRLINES", "全日空": "ALL NIPPON AIRWAYS", "樂桃航空": "PEACH AVIATION", "捷星日本": "JETSTAR JAPAN", "春秋航空日本": "SPRING JAPAN", "ZIPAIR": "ZIPAIR TOKYO", "國泰航空": "CATHAY PACIFIC", "香港航空": "HONG KONG AIRLINES", "香港快運": "HK EXPRESS", "澳門航空": "AIR MACAU", "大韓航空": "KOREAN AIR", "韓亞航空": "ASIANA AIRLINES", "濟州航空": "JEJU AIR", "德威航空": "TWAY AIR", "真航空": "JIN AIR", "釜山航空": "AIR BUSAN", "酷航": "SCOOT", "亞洲航空": "AIRASIA", "新加坡航空": "SINGAPORE AIRLINES", "泰國航空": "THAI AIRWAYS", "泰國獅子航空": "THAI LION AIR", "越捷航空": "VIETJET AIR", "越南航空": "VIETNAM AIRLINES", "菲律賓航空": "PHILIPPINE AIRLINES", "宿霧太平洋航空": "CEBU PACIFIC", "馬來西亞航空": "MALAYSIA AIRLINES", "聯合航空": "UNITED AIRLINES", "達美航空": "DELTA AIR LINES", "阿聯酋航空": "EMIRATES", "土耳其航空": "TURKISH AIRLINES"};
