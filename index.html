@@ -1060,6 +1060,7 @@
                             <div v-else-if="receipt.phase === 'error'" class="text-center py-4">
                                 <i class="fa-solid fa-circle-exclamation text-2xl text-[#9E0E26]"></i>
                                 <p class="text-[13px] font-bold text-slate-700 mt-2 leading-relaxed whitespace-pre-line">{{ receipt.error }}</p>
+                                <p v-if="receipt.errorDetail" class="mt-3 text-left text-[10px] font-sans text-slate-400 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2 break-all leading-relaxed select-text">錯誤細節（截圖給 Claude 看）：<br>{{ receipt.errorDetail }}</p>
                                 <label class="inline-block mt-4 text-[12px] font-bold px-4 py-2.5 rounded-lg bg-[#1e293b] text-white cursor-pointer active:scale-95">
                                     <i class="fa-solid fa-camera mr-1.5"></i>重新選照片
                                     <input type="file" accept="image/*" class="hidden" @change="onReceiptFile($event, receipt.target)">
@@ -2502,8 +2503,10 @@
         let _leafletMap = null, _leafletLayer = null, _leafletResizeObs = null, _mapRenderToken = 0;
         let _expenseChart = null;
         let _pdfDoc = null;
-        let _aiModel = null, _aiSig = '';
-        const FB_MODULAR_VER = '12.19.0', RECEIPT_MODEL = 'gemini-3.5-flash';
+        let _aiInst = null, _aiMod = null, _aiSig = '';
+        const FB_MODULAR_VER = '12.19.0';
+        // 依序嘗試：哪個模型在這個專案可用就用哪個（找不到就自動換下一個）
+        const RECEIPT_MODELS = ['gemini-3.5-flash', 'gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-3-flash-preview', 'gemini-2.5-flash'];
         let _fbApp = null, _fbDb = null, _fbRef = null, _fbUnsub = null, _syncTimer = null, _syncLast = {}, _syncPendingRemote = null;
         let _photosUp = null, _photoFetching = false;
         const _geoCache = {};
@@ -2816,7 +2819,7 @@
                     },
                     saveTimeout: null, isStateLoaded: false,
                     sortableInstances: {},
-                    isDraggingSpot: false, justDraggedSpot: false, receipt: { open: false, phase: '', target: 'new', img: '', b64: '', error: '', data: null, amount: '', dayIdx: 0, spotIdx: -1, mode: 'new', category: '', payer: '', method: '信用卡', zoom: false }, swipe: { id: null, open: null, offset: 0, active: false }, undoDelete: null, justSwiped: false,
+                    isDraggingSpot: false, justDraggedSpot: false, receipt: { open: false, phase: '', target: 'new', img: '', b64: '', error: '', errorDetail: '', data: null, amount: '', dayIdx: 0, spotIdx: -1, mode: 'new', category: '', payer: '', method: '信用卡', zoom: false }, swipe: { id: null, open: null, offset: 0, active: false }, undoDelete: null, justSwiped: false,
                     showExpenseDetail: false, expenseDetailKey: '',
                     showSwapModal: false, toastMsg: '', showSettleDetail: false, airlineGroups: AIRLINE_GROUPS, photoDrag: { obj: null },
                     sync: { enabled: false, config: null, code: '', status: 'off', lastAt: 0, error: '', deviceId: '', joining: false }, syncConfigText: '', syncInviteText: '', isApplyingRemote: false,
@@ -5183,25 +5186,48 @@
                 // ===== 📷 收據辨識（Firebase AI Logic + Gemini） =====
                 curSym(c) { return ({ JPY: '¥', TWD: 'NT$', KRW: '₩', USD: 'US$', EUR: '€', CNY: '¥', HKD: 'HK$' })[c] || (c ? c + ' ' : ''); },
                 receiptNum(v) { const n = parseFloat(String(v == null ? '' : v).replace(/[^\d.\-]/g, '')); return isFinite(n) ? n : 0; },
-                async getReceiptModel() {
+                async getReceiptAI() {
                     const cfg = this.sync.config;
                     if (!cfg || !cfg.apiKey || !cfg.projectId) throw new Error('NO_CONFIG');
                     const key = (this.tripInfo.aiSiteKey || '').trim();
                     const sig = cfg.projectId + '|' + key;
-                    if (_aiModel && _aiSig === sig) return _aiModel;
+                    if (_aiInst && _aiSig === sig) return _aiInst;
                     const base = `https://www.gstatic.com/firebasejs/${FB_MODULAR_VER}/`;
                     const appMod = await import(base + 'firebase-app.js');
                     const name = 'receiptAI-' + Array.from(sig).reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 7).toString(36);
                     const app = appMod.getApps().find(a => a.name === name) || appMod.initializeApp(cfg, name);
                     if (key) {
                         const ac = await import(base + 'firebase-app-check.js');
-                        try { ac.initializeAppCheck(app, { provider: new ac.ReCaptchaEnterpriseProvider(key), isTokenAutoRefreshEnabled: true }); /* Fraud Defense（舊稱 reCAPTCHA Enterprise） */ } catch (e) { /* 已經初始化過 */ }
+                        try { ac.initializeAppCheck(app, { provider: new ac.ReCaptchaEnterpriseProvider(key), isTokenAutoRefreshEnabled: true }); } catch (e) { /* 已經初始化過 */ }
                     }
-                    const aiMod = await import(base + 'firebase-ai.js');
-                    const ai = aiMod.getAI(app, { backend: new aiMod.GoogleAIBackend() });
-                    _aiModel = aiMod.getGenerativeModel(ai, { model: RECEIPT_MODEL, generationConfig: { responseMimeType: 'application/json', temperature: 0.1 } });
+                    _aiMod = await import(base + 'firebase-ai.js');
+                    _aiInst = _aiMod.getAI(app, { backend: new _aiMod.GoogleAIBackend() });
                     _aiSig = sig;
-                    return _aiModel;
+                    return _aiInst;
+                },
+                isModelMissing(err) {
+                    const m = String((err && (err.code || '')) + ' ' + (err && err.message || '')).toLowerCase();
+                    return /404|not[ _-]?found|is not supported|unsupported model|no longer available|deprecated|retired/.test(m);
+                },
+                async receiptGenerate(parts) {
+                    const ai = await this.getReceiptAI();
+                    let saved = '';
+                    try { saved = localStorage.getItem('tripApp_receiptModel') || ''; } catch (e) {}
+                    const list = saved && RECEIPT_MODELS.includes(saved) ? [saved, ...RECEIPT_MODELS.filter(x => x !== saved)] : RECEIPT_MODELS;
+                    let lastErr = null;
+                    for (const name of list) {
+                        try {
+                            const model = _aiMod.getGenerativeModel(ai, { model: name, generationConfig: { responseMimeType: 'application/json', temperature: 0.1 } });
+                            const res = await model.generateContent(parts);
+                            try { localStorage.setItem('tripApp_receiptModel', name); } catch (e) {}
+                            return res;
+                        } catch (err) {
+                            console.warn('receipt model', name, err);
+                            lastErr = err;
+                            if (!this.isModelMissing(err)) throw err;
+                        }
+                    }
+                    throw lastErr || new Error('MODEL_NONE');
                 },
                 receiptCompress(file) {
                     return new Promise((resolve, reject) => {
@@ -5241,13 +5267,12 @@
                     if (!file) return;
                     if (!this.sync.config) { alert('收據辨識要用到 Firebase：請先到「設定 → 雲端同步」開啟同步。'); return; }
                     const prev = this.receipt;
-                    this.receipt = { open: true, phase: 'loading', target, img: '', b64: '', error: '', data: null, amount: '', dayIdx: this.activeDay, spotIdx: -1, mode: 'new',
+                    this.receipt = { open: true, phase: 'loading', target, img: '', b64: '', error: '', errorDetail: '', data: null, amount: '', dayIdx: this.activeDay, spotIdx: -1, mode: 'new',
                                      category: '', payer: prev.payer || this.tripInfo.passengerName || '', method: '信用卡', zoom: false };
                     try {
                         const { url, b64 } = await this.receiptCompress(file);
                         this.receipt.img = url; this.receipt.b64 = b64;
-                        const model = await this.getReceiptModel();
-                        const res = await model.generateContent([this.receiptPrompt(), { inlineData: { mimeType: 'image/jpeg', data: b64 } }]);
+                        const res = await this.receiptGenerate([this.receiptPrompt(), { inlineData: { mimeType: 'image/jpeg', data: b64 } }]);
                         const text = res.response.text();
                         const raw = this.parseReceiptJSON(text);
                         if (!raw || raw.error) throw new Error(raw && raw.error === 'not_receipt' ? 'NOT_RECEIPT' : 'PARSE_FAIL');
@@ -5265,6 +5290,7 @@
                         console.warn('receipt', err);
                         if (!this.receipt.open) return;
                         this.receipt.error = this.receiptErrorText(err);
+                        this.receipt.errorDetail = String((err && err.code ? err.code + '｜' : '') + ((err && err.message) || err || '')).slice(0, 400);
                         this.receipt.phase = 'error';
                     }
                 },
@@ -5317,7 +5343,7 @@
                     if (!navigator.onLine || m.includes('failed to fetch') || m.includes('imported module') || m.includes('network')) return '連不上網路，或 AI 元件載入失敗。\n請確認網路後再試。';
                     if (m.includes('429') || m.includes('quota') || m.includes('exhausted')) return '今天的免費額度用完了（或太頻繁），請稍後再試。';
                     if (m.includes('403') || m.includes('permission') || m.includes('not enabled') || m.includes('disabled') || m.includes('api-not-enabled')) return 'Firebase 的 AI Logic 還沒開啟。\n請到 Firebase 主控台 → AI Logic → 開始使用，選 Gemini Developer API。';
-                    if (m.includes('404') || m.includes('not found')) return 'AI 模型暫時找不到，請稍後再試。';
+                    if (m.includes('404') || m.includes('not found')) return '目前可用的 AI 模型都找不到。\n請確認 Firebase「AI Logic」已完成設定（選 Gemini Developer API）。';
                     return '辨識失敗了，請再試一次。\n（' + ((err && err.message) || '未知錯誤').slice(0, 120) + '）';
                 },
                 closeReceipt() { this.receipt = { ...this.receipt, open: false, phase: '', data: null, img: '', b64: '' }; },
