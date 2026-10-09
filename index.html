@@ -358,8 +358,8 @@
                                     <span class="text-[11px] font-bold text-slate-400 mb-1 uppercase tracking-widest">{{ itinerary[activeDay].dayOfWeekEN }}</span>
                                     <span class="text-lg font-bold text-slate-700 font-serif">{{ itinerary[activeDay].shortDate }}</span>
                                 </div>
-                                <div class="flex-1 relative rounded-xl overflow-hidden shadow-sm h-44 bg-slate-200 cursor-pointer group" @click="openEditHeroModal">
-                                    <img :src="itinerary[activeDay].hero.image" :style="{ objectPosition: '50% ' + (itinerary[activeDay].hero.position || 50) + '%' }" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105">
+                                <div ref="heroCard" class="flex-1 relative rounded-xl overflow-hidden shadow-sm h-44 bg-slate-200 cursor-pointer group" @click="openEditHeroModal">
+                                    <img :src="itinerary[activeDay].hero.image" :style="{ objectPosition: '50% ' + (itinerary[activeDay].hero.position == null || itinerary[activeDay].hero.position === '' ? 50 : itinerary[activeDay].hero.position) + '%' }" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105">
                                     <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
                                     <div class="absolute bottom-3 left-4 right-4 text-white">
                                         <div class="flex items-center space-x-2 text-[9px] mb-1.5 opacity-90 tracking-widest">
@@ -386,6 +386,11 @@
                                     
                                     <div :id="'sortable-list-' + activeDay" class="flex flex-col gap-6 relative z-10" :class="{ 'spot-list-dragging': isDraggingSpot }">
                                         <div v-for="(spot, index) in itinerary[activeDay].spots" :key="spot.id" :data-id="spot.id" class="relative flex items-start group spot-item">
+                                            <!-- 左滑後露出的刪除鍵 -->
+                                            <button v-if="swipeOffset(spot.id) < 0" type="button" @click.stop="deleteSpot(activeDay, index)"
+                                                    class="absolute right-0 top-0 bottom-0 w-[84px] rounded-xl bg-[#E5484D] text-white flex flex-col items-center justify-center text-[11px] font-bold active:brightness-90">
+                                                <i class="fa-regular fa-trash-can text-[16px] mb-1"></i>刪除
+                                            </button>
                                             
                                             <!-- 左側：獨立的時間文字區塊 -->
                                             <div class="w-[42px] shrink-0 pt-1 flex flex-col items-end pointer-events-none">
@@ -403,9 +408,11 @@
                                             </div>
                                             
                                             <!-- 右側：行程卡片 -->
-                                            <div @click="handleCardClick(index, $event)" 
-                                                 class="bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-slate-100 border-l-[3px] ml-[18px] flex-1 relative overflow-hidden cursor-pointer transition-[transform,box-shadow] duration-150 select-none draggable-card"
-                                                 :style="{ borderLeftColor: getSpotColor(spot.type) }">
+                                            <div @click="handleCardClick(index, $event)"
+                                                 @touchstart="swipeStart($event, spot.id)" @touchmove="swipeMove($event)" @touchend="swipeEnd" @touchcancel="swipeEnd"
+                                                 class="bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-slate-100 border-l-[3px] ml-[18px] flex-1 relative overflow-hidden cursor-pointer duration-150 select-none draggable-card"
+                                                 :class="swipe.active && swipe.id === spot.id ? 'transition-none' : 'transition-[transform,box-shadow]'"
+                                                 :style="swipeOffset(spot.id) ? { borderLeftColor: getSpotColor(spot.type), transform: 'translateX(' + swipeOffset(spot.id) + 'px)' } : { borderLeftColor: getSpotColor(spot.type) }">
                                                 
                                                 <!-- 封面照片（放在卡片最上方） -->
                                                 <div v-if="spot.coverImage" class="-mx-3 -mt-3 sm:-mx-4 sm:-mt-4 mb-3 relative h-36 overflow-hidden">
@@ -800,9 +807,9 @@
                         <h2 class="text-xl font-bold text-slate-800 mb-4 pl-1">花費與記帳</h2>
 
                         <!-- 💱 即時匯率換算 -->
-                        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
-                            <div class="flex items-center justify-between mb-3">
-                                <p class="text-[14px] font-bold text-slate-800 flex items-center"><span class="w-7 h-7 rounded-lg bg-[#EAF3F9] text-[#1E4E79] flex items-center justify-center mr-2"><i class="fa-solid fa-yen-sign text-[11px]"></i></span>匯率換算</p>
+                        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="flex items-center"><span class="w-8 h-8 rounded-lg bg-[#EAF3F9] text-[#1E4E79] flex items-center justify-center mr-2.5 shrink-0"><i class="fa-solid fa-yen-sign text-[13px]"></i></span><div><p class="text-[15px] font-bold text-slate-800 leading-tight">匯率換算</p></div></div>
                                 <button type="button" @click="fetchRate(true)" class="text-[10px] font-bold text-slate-400 flex items-center active:opacity-60">
                                     <i class="fa-solid fa-rotate-right mr-1" :class="{ 'animate-spin': isRateLoading }"></i>{{ rateTimeLabel }}
                                 </button>
@@ -831,12 +838,9 @@
 
                         </div>
                         
-                        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 mb-6 relative overflow-hidden">
-                            <div class="flex items-center justify-between mb-4 text-slate-700 relative z-10">
-                                <div class="flex items-center space-x-3">
-                                    <i class="fa-solid fa-chart-pie text-xl text-brand"></i>
-                                    <h3 class="font-bold text-lg">預估總花費</h3>
-                                </div>
+                        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 relative overflow-hidden">
+                            <div class="flex items-center justify-between mb-4 relative z-10">
+                                <div class="flex items-center"><span class="w-8 h-8 rounded-lg bg-[#EAF3F9] text-[#1E4E79] flex items-center justify-center mr-2.5 shrink-0"><i class="fa-solid fa-wallet text-[13px]"></i></span><div><p class="text-[15px] font-bold text-slate-800 leading-tight">預估總花費</p></div></div>
                                 <div class="text-[9px] text-slate-400 font-bold bg-slate-50 px-2 py-1 rounded border border-slate-100">
                                     匯率參考：¥1 = NTD$ {{ exchangeRateJPYtoTWD.toFixed(4) }}
                                 </div>
@@ -863,8 +867,8 @@
 
                         <!-- 篩選器與圓餅圖 -->
                         <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
-                            <div class="flex items-center justify-between mb-3 border-b border-slate-100 pb-3">
-                                <h4 class="font-bold text-slate-800 text-base">花費分析</h4>
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="flex items-center"><span class="w-8 h-8 rounded-lg bg-[#EAF3F9] text-[#1E4E79] flex items-center justify-center mr-2.5 shrink-0"><i class="fa-solid fa-chart-pie text-[13px]"></i></span><div><p class="text-[15px] font-bold text-slate-800 leading-tight">花費分析</p></div></div>
                                 <div class="flex space-x-2">
                                     <select v-model="expenseFilterType" @change="updateExpenseChart" class="bg-slate-50 border border-slate-200 text-slate-600 text-xs font-bold rounded-lg px-2 py-1 outline-none">
                                         <option value="category">依大類別</option>
@@ -906,13 +910,7 @@
                         <!-- 🤝 分帳結算 -->
                         <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
                             <div class="flex items-center justify-between mb-4">
-                                <div class="flex items-center">
-                                    <span class="w-8 h-8 rounded-lg bg-[#EAF3F9] text-[#1E4E79] flex items-center justify-center mr-2.5"><i class="fa-solid fa-hand-holding-dollar text-[13px]"></i></span>
-                                    <div>
-                                        <p class="text-[15px] font-bold text-slate-800 leading-tight">分帳結算</p>
-                                        <p class="text-[10px] font-bold text-slate-400">依「墊付」紀錄計算，已互相抵銷</p>
-                                    </div>
-                                </div>
+                                <div class="flex items-center"><span class="w-8 h-8 rounded-lg bg-[#EAF3F9] text-[#1E4E79] flex items-center justify-center mr-2.5 shrink-0"><i class="fa-solid fa-hand-holding-dollar text-[13px]"></i></span><div><p class="text-[15px] font-bold text-slate-800 leading-tight">分帳結算</p><p class="text-[10px] font-bold text-slate-400">依「墊付」紀錄計算，已互相抵銷</p></div></div>
                             </div>
                             <div v-if="settlement.results.length" class="space-y-2.5">
                                 <div v-for="(r, ri) in settlement.results" :key="'st'+ri" class="rounded-xl bg-slate-50 border border-slate-100 px-3.5 py-3">
@@ -1043,16 +1041,28 @@
                                 <input type="text" v-model="editHeroData.location" class="w-full min-w-0 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none">
                             </div>
                             <div>
-                                <label class="block text-xs font-bold text-slate-500 mb-1.5">更換照片 (本機儲存)</label>
-                                <div class="relative w-full h-32 bg-slate-100 rounded-xl overflow-hidden border border-slate-200 flex items-center justify-center cursor-pointer mb-3">
-                                    <img v-if="editHeroData.image" :src="editHeroData.image" :style="{ objectPosition: '50% ' + (editHeroData.position || 50) + '%' }" class="absolute inset-0 w-full h-full object-cover opacity-70">
-                                    <span class="relative z-10 bg-white/90 px-4 py-2 rounded-lg text-xs font-bold text-slate-700 shadow-sm"><i class="fa-solid fa-camera mr-2"></i>選擇相片</span>
-                                    <input type="file" @change="handleHeroImageUpload" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer z-20">
+                                <label class="block text-xs font-bold text-slate-500 mb-1.5">封面照片</label>
+                                <div v-if="editHeroData.image" class="rounded-xl overflow-hidden border border-slate-200 bg-slate-50">
+                                    <!-- 和當日重點封面同比例：直接拖曳照片調整要露出的位置 -->
+                                    <div class="relative w-full overflow-hidden bg-slate-200 select-none" :style="{ aspectRatio: heroRatio + ' / 1', touchAction: 'none', cursor: 'grab' }"
+                                         @pointerdown="startPhotoDrag($event, editHeroData, 'position')" @pointermove="movePhotoDrag($event)" @pointerup="endPhotoDrag" @pointercancel="endPhotoDrag" @pointerleave="endPhotoDrag">
+                                        <img :src="editHeroData.image" :style="{ objectPosition: '50% ' + (editHeroData.position == null || editHeroData.position === '' ? 50 : editHeroData.position) + '%' }" class="w-full h-full object-cover pointer-events-none" draggable="false">
+                                        <div v-if="photoDrag.obj === editHeroData" class="absolute inset-0 pointer-events-none" style="background: linear-gradient(transparent 33%, rgba(255,255,255,.35) 33.3%, transparent 33.6%, transparent 66.4%, rgba(255,255,255,.35) 66.6%, transparent 67%);"></div>
+                                        <span class="absolute left-2 bottom-2 text-[10px] font-bold text-white bg-black/45 rounded-full px-2 py-1 pointer-events-none"><i class="fa-solid fa-up-down mr-1"></i>上下拖曳調整位置</span>
+                                    </div>
+                                    <div class="flex items-center gap-2 p-2">
+                                        <label class="flex-1 h-8 rounded-lg bg-white border border-slate-200 text-slate-600 text-[12px] font-bold flex items-center justify-center cursor-pointer active:scale-95">
+                                            <i class="fa-solid fa-camera mr-1.5 text-slate-400"></i>更換照片
+                                            <input type="file" @change="handleHeroImageUpload" accept="image/*" class="hidden">
+                                        </label>
+                                        <button type="button" @click.stop="editHeroData.position = 50" class="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-400 flex items-center justify-center shrink-0" title="置中"><i class="fa-solid fa-crosshairs text-[12px]"></i></button>
+                                    </div>
                                 </div>
-                                <div v-if="editHeroData.image" class="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                                    <label class="block text-[10px] font-bold text-slate-500 mb-2"><i class="fa-solid fa-crop-simple mr-1"></i>上下調整照片顯示範圍</label>
-                                    <input type="range" min="0" max="100" v-model="editHeroData.position" class="w-full accent-brand">
-                                </div>
+                                <label v-else class="relative w-full h-28 bg-slate-50 rounded-xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-400 cursor-pointer">
+                                    <i class="fa-regular fa-image text-xl mb-1"></i>
+                                    <span class="text-xs font-bold">選擇相片</span>
+                                    <input type="file" @change="handleHeroImageUpload" accept="image/*" class="hidden">
+                                </label>
                             </div>
                             <button type="button" @click.stop="saveHeroData" class="w-full bg-slate-800 text-white font-bold py-3.5 rounded-xl shadow mt-2 active:scale-95 transition-transform">儲存設定</button>
                         </div>
@@ -1342,9 +1352,14 @@
                             </div>
                             
                             <div class="p-4 pt-0 bg-[#F4F6F8]">
-                                <button type="button" @click.stop="spotModalMode = 'edit'" class="w-full bg-slate-200 text-slate-700 font-bold py-3.5 rounded-xl active:scale-[0.98] shadow-sm">
-                                    <i class="fa-solid fa-pen mr-2"></i> 編輯此行程
-                                </button>
+                                <div class="flex gap-2.5">
+                                    <button type="button" @click.stop="spotModalMode = 'edit'" class="flex-1 bg-slate-200 text-slate-700 font-bold py-3.5 rounded-xl active:scale-[0.98] shadow-sm">
+                                        <i class="fa-solid fa-pen mr-2"></i> 編輯此行程
+                                    </button>
+                                    <button type="button" @click.stop="deleteSelectedSpot" class="w-[52px] shrink-0 bg-white border border-slate-200 text-[#E5484D] rounded-xl active:scale-[0.96] shadow-sm flex items-center justify-center" title="刪除此行程">
+                                        <i class="fa-regular fa-trash-can text-[16px]"></i>
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
@@ -1906,6 +1921,9 @@
                                 <button type="button" @click.stop="submitSpot" class="w-full bg-slate-800 text-white font-bold py-3.5 rounded-xl shadow active:scale-[0.98]">
                                     {{ spotModalMode === 'add' ? '加入行程' : '儲存修改' }}
                                 </button>
+                                <button v-if="spotModalMode === 'edit'" type="button" @click.stop="deleteSelectedSpot" class="w-full mt-3 py-2.5 text-[13px] font-bold text-[#E5484D] active:opacity-60">
+                                    <i class="fa-regular fa-trash-can mr-1.5"></i>刪除此行程
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -2181,7 +2199,11 @@
                     </div>
                 </div>
                 <!-- 小提示 -->
-                <div v-if="toastMsg" class="fixed left-1/2 -translate-x-1/2 bottom-24 z-[95] bg-slate-800/90 text-white text-[12px] font-bold px-4 py-2.5 rounded-full shadow-lg animate-pop-in whitespace-nowrap">{{ toastMsg }}</div>
+                <div v-if="undoDelete" class="fixed left-1/2 -translate-x-1/2 bottom-24 z-[96] bg-slate-800/95 text-white text-[12px] font-bold pl-4 pr-1.5 py-1.5 rounded-full shadow-lg animate-pop-in flex items-center max-w-[92vw]">
+                    <i class="fa-regular fa-trash-can mr-2 opacity-70"></i><span class="truncate">已刪除「{{ undoDelete.spot.name || '未命名行程' }}」</span>
+                    <button type="button" @click.stop="undoDeleteSpot" class="ml-3 shrink-0 rounded-full px-3 py-1.5 text-[12px] font-bold" :style="{ backgroundColor: currentTheme.accent, color: currentTheme.onAccent }">復原</button>
+                </div>
+                <div v-else-if="toastMsg" class="fixed left-1/2 -translate-x-1/2 bottom-24 z-[95] bg-slate-800/90 text-white text-[12px] font-bold px-4 py-2.5 rounded-full shadow-lg animate-pop-in whitespace-nowrap">{{ toastMsg }}</div>
 
                 <!-- 花費明細 -->
                 <div v-if="showExpenseDetail" @click.self="showExpenseDetail = false" class="fixed inset-0 z-[85] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
@@ -2585,7 +2607,7 @@
                     newLinkTitle: '', newLinkUrl: '',
                     activePhotoIndex: 0,
                     
-                    showEditHeroModal: false, editHeroData: { title: '', location: '', image: '', position: 50 },
+                    showEditHeroModal: false, editHeroData: { title: '', location: '', image: '', position: 50 }, heroRatio: 1.9,
                     showAddDayModal: false, newDayData: { date: '', label: '' },
                     
                     showAddCategoryModal: false, showIconPickerModal: false, showSubcategoryModal: false, 
@@ -2620,7 +2642,7 @@
                     },
                     saveTimeout: null, isStateLoaded: false,
                     sortableInstances: {},
-                    isDraggingSpot: false, justDraggedSpot: false,
+                    isDraggingSpot: false, justDraggedSpot: false, swipe: { id: null, open: null, offset: 0, active: false }, undoDelete: null, justSwiped: false,
                     showExpenseDetail: false, expenseDetailKey: '',
                     showSwapModal: false, toastMsg: '', showSettleDetail: false, airlineGroups: AIRLINE_GROUPS, photoDrag: { obj: null },
                     sync: { enabled: false, config: null, code: '', status: 'off', lastAt: 0, error: '', deviceId: '', joining: false }, syncConfigText: '', syncInviteText: '', isApplyingRemote: false,
@@ -2919,6 +2941,7 @@
                     }
                 },
                 activeDay() {
+                    this.closeSwipe();
                     if (this.currentTab === 'itinerary') this.$nextTick(() => { this.initSortableItinerary(); });
                 },
                 currentDaySpotCount(newVal, oldVal) {
@@ -3543,7 +3566,7 @@
                             swapThreshold: 0.6,
                             ghostClass: 'sortable-ghost', chosenClass: 'sortable-chosen', dragClass: 'sortable-drag',
                             onStart: () => {
-                                this.isDraggingSpot = true;
+                                this.isDraggingSpot = true; this.closeSwipe(); this._sw = null;
                                 if (navigator.vibrate) { try { navigator.vibrate(15); } catch (e) {} }
                             },
                             onEnd: (evt) => {
@@ -4801,6 +4824,11 @@
                         if (!f || !f.date || !(f.flightNo || f.depCode || f.arrCode)) return;
                         const day = this.itinerary.find(d => d.rawDate === f.date);
                         if (!day) return;
+                        const dis = this.tripInfo.flightDismissed || {};
+                        if (dis[tag]) {
+                            if (dis[tag] === this.flightSig(f)) return;          // 使用者刪掉了這班的卡片 → 不要自動長回來
+                            const d2 = { ...dis }; delete d2[tag]; this.tripInfo.flightDismissed = d2;   // 機票改了 → 重新建立
+                        }
                         let spot = null;
                         this.itinerary.forEach(d => {
                             const idx = (d.spots || []).findIndex(sp => sp.fromFlight === tag);
@@ -4870,7 +4898,7 @@
                     }
                 },
 
-                openEditHeroModal() { this.editHeroData = JSON.parse(JSON.stringify(this.itinerary[this.activeDay].hero)); if(!this.editHeroData.position) this.editHeroData.position = 50; this.showEditHeroModal = true; },
+                openEditHeroModal() { this.editHeroData = JSON.parse(JSON.stringify(this.itinerary[this.activeDay].hero)); if(this.editHeroData.position == null || this.editHeroData.position === '') this.editHeroData.position = 50; this.editHeroData.position = Number(this.editHeroData.position); const el = this.$refs.heroCard; if (el && el.clientWidth && el.clientHeight) this.heroRatio = +(el.clientWidth / el.clientHeight).toFixed(3); this.showEditHeroModal = true; },
                 saveHeroData() { this.itinerary[this.activeDay].hero = JSON.parse(JSON.stringify(this.editHeroData)); this.showEditHeroModal = false; },
                 
                 handleHeroImageUpload(event) {
@@ -4977,8 +5005,78 @@
                     }
                     this.showSpotModal = false;
                 },
+                // --- 行程卡片：左滑刪除 ---
+                swipeOffset(id) {
+                    const w = this.swipe;
+                    if (w.active && w.id === id) return w.offset;
+                    return w.open === id ? -84 : 0;
+                },
+                swipeStart(e, id) {
+                    const t = e.touches && e.touches[0]; if (!t) return;
+                    if (this.swipe.open && this.swipe.open !== id) this.swipe.open = null;
+                    this._sw = { id, x: t.clientX, y: t.clientY, base: this.swipe.open === id ? -84 : 0, lock: null };
+                },
+                swipeMove(e) {
+                    const s = this._sw, t = e.touches && e.touches[0];
+                    if (!s || !t || this.isDraggingSpot) return;
+                    const dx = t.clientX - s.x, dy = t.clientY - s.y;
+                    if (!s.lock) {
+                        if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.3) s.lock = 'h';
+                        else if (Math.abs(dy) > 10) { s.lock = 'v'; return; }
+                        else return;
+                    }
+                    if (s.lock !== 'h') return;
+                    if (e.cancelable) e.preventDefault();
+                    const raw = s.base + dx;
+                    const off = raw > 0 ? 0 : (raw < -84 ? -84 + (raw + 84) * 0.3 : raw);   // 超過時有阻尼
+                    this.swipe = { ...this.swipe, id: s.id, active: true, offset: Math.round(off) };
+                },
+                swipeEnd() {
+                    const s = this._sw; this._sw = null;
+                    if (!s || s.lock !== 'h') return;
+                    const off = this.swipe.offset;
+                    const open = s.base === 0 ? off < -40 : off < -50;
+                    this.swipe = { id: null, active: false, offset: 0, open: open ? s.id : null };
+                    this.justSwiped = true; setTimeout(() => { this.justSwiped = false; }, 300);
+                },
+                closeSwipe() { if (this.swipe.open || this.swipe.active) this.swipe = { id: null, open: null, offset: 0, active: false }; },
+                flightSig(f) { return f ? [f.date, f.flightNo, f.depCode, f.arrCode].map(x => (x || '').toString().toUpperCase()).join('|') : ''; },
+                deleteSpot(dayIdx, spotIdx) {
+                    const day = this.itinerary[dayIdx];
+                    if (!day || !day.spots[spotIdx]) return;
+                    const spot = day.spots.splice(spotIdx, 1)[0];
+                    this.closeSwipe();
+                    // 機票自動建立的航班卡片：記住「這班已被刪掉」，之後存旅程設定時才不會又自動長回來
+                    if (spot.fromFlight) {
+                        const f = (this.tripInfo.flights || [])[spot.fromFlight === 'out' ? 0 : 1];
+                        this.tripInfo.flightDismissed = { ...(this.tripInfo.flightDismissed || {}), [spot.fromFlight]: this.flightSig(f) };
+                    }
+                    this.undoDelete = { dayIdx, spotIdx, spot };
+                    clearTimeout(this._undoTimer);
+                    this._undoTimer = setTimeout(() => { this.undoDelete = null; }, 6000);
+                    if (navigator.vibrate) { try { navigator.vibrate(10); } catch (e) {} }
+                },
+                deleteSelectedSpot() {
+                    if (this.selectedSpotIndex == null || this.selectedSpotIndex < 0) return;
+                    const spot = this.itinerary[this.activeDay].spots[this.selectedSpotIndex];
+                    if (!spot) return;
+                    if (!confirm(`確定要刪除「${spot.name || '這個行程'}」嗎？`)) return;
+                    this.showSpotModal = false;
+                    this.deleteSpot(this.activeDay, this.selectedSpotIndex);
+                },
+                undoDeleteSpot() {
+                    const u = this.undoDelete; if (!u) return;
+                    const day = this.itinerary[u.dayIdx];
+                    if (day) day.spots.splice(Math.min(u.spotIdx, day.spots.length), 0, u.spot);
+                    if (u.spot.fromFlight && this.tripInfo.flightDismissed) {
+                        const d = { ...this.tripInfo.flightDismissed }; delete d[u.spot.fromFlight]; this.tripInfo.flightDismissed = d;
+                    }
+                    this.undoDelete = null; clearTimeout(this._undoTimer);
+                    this.$nextTick(() => this.initSortableItinerary());
+                },
                 handleCardClick(index, event) {
-                    if (this.justDraggedSpot || this.isDraggingSpot) return;
+                    if (this.justDraggedSpot || this.isDraggingSpot || this.justSwiped) return;
+                    if (this.swipe.open) { this.closeSwipe(); return; }
                     this.openSpotDetail(index);
                 },
 
@@ -5004,21 +5102,21 @@
                 },
                 
                 // --- 照片：拖曳調整位置 ---
-                startPhotoDrag(e, imgObj) {
+                startPhotoDrag(e, imgObj, key = 'pos') {
                     const frame = e.currentTarget, img = frame.querySelector('img');
                     if (!img || !img.naturalWidth) return;
                     const fw = frame.clientWidth, fh = frame.clientHeight;
                     const rh = fw * img.naturalHeight / img.naturalWidth;   // 照片撐滿寬度時的高度
                     const overflow = Math.max(0, rh - fh);
                     if (typeof imgObj !== 'object') return;
-                    this.photoDrag = { obj: imgObj, y: e.clientY, start: Number(imgObj.pos == null ? 50 : imgObj.pos), overflow };
+                    this.photoDrag = { obj: imgObj, key, y: e.clientY, start: Number(imgObj[key] == null || imgObj[key] === '' ? 50 : imgObj[key]), overflow };
                     try { frame.setPointerCapture(e.pointerId); } catch (err) {}
                 },
                 movePhotoDrag(e) {
                     const d = this.photoDrag;
                     if (!d.obj || !d.overflow) return;
                     const dy = e.clientY - d.y;
-                    d.obj.pos = Math.round(Math.max(0, Math.min(100, d.start - dy / d.overflow * 100)));
+                    d.obj[d.key || 'pos'] = Math.round(Math.max(0, Math.min(100, d.start - dy / d.overflow * 100)));
                 },
                 endPhotoDrag() { this.photoDrag = { obj: null }; },
                 isCoverImage(imgObj) { return !!this.selectedSpot.coverImage && this.selectedSpot.coverImage === (imgObj.url || imgObj); },
