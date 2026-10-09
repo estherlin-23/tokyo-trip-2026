@@ -806,6 +806,19 @@
                     <div v-show="currentTab === 'expense'" class="animate-fade-in space-y-4 px-4 pt-4 pb-12 min-h-full">
                         <h2 class="text-xl font-bold text-slate-800 mb-4 pl-1">花費與記帳</h2>
 
+                        <!-- 📷 掃描收據 -->
+                        <label class="block bg-white rounded-2xl shadow-sm border border-slate-100 p-4 cursor-pointer active:scale-[0.99] transition-transform">
+                            <div class="flex items-center">
+                                <span class="w-11 h-11 rounded-xl flex items-center justify-center mr-3 shrink-0" :style="{ backgroundColor: currentTheme.accent, color: currentTheme.onAccent }"><i class="fa-solid fa-receipt text-[18px]"></i></span>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-[15px] font-bold text-slate-800 leading-tight">掃描收據記帳</p>
+                                    <p class="text-[11px] font-bold text-slate-400 mt-0.5 leading-snug">拍照或選照片，自動辨識品項與金額（日／英／中／韓）</p>
+                                </div>
+                                <span class="w-8 h-8 rounded-full bg-slate-50 border border-slate-200 text-slate-500 flex items-center justify-center shrink-0 ml-2"><i class="fa-solid fa-camera text-[12px]"></i></span>
+                            </div>
+                            <input type="file" accept="image/*" class="hidden" @change="onReceiptFile($event, 'new')">
+                        </label>
+
                         <!-- 💱 即時匯率換算 -->
                         <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
                             <div class="flex items-center justify-between mb-4">
@@ -1020,6 +1033,126 @@
                                     <i :class="ic"></i>
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 📷 收據辨識 Modal -->
+                <div v-if="receipt.open" class="fixed inset-0 z-[85] flex items-end sm:items-center justify-center bg-slate-900/60 backdrop-blur-sm">
+                    <div class="bg-white w-full max-w-[430px] rounded-t-3xl sm:rounded-3xl shadow-2xl animate-slide-up flex flex-col max-h-[90vh] overflow-hidden">
+                        <div class="flex items-center px-5 pt-5 pb-3 border-b border-slate-100 shrink-0">
+                            <span class="w-8 h-8 rounded-lg bg-[#EAF3F9] text-[#1E4E79] flex items-center justify-center mr-2.5 shrink-0"><i class="fa-solid fa-receipt text-[13px]"></i></span>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-[15px] font-bold text-slate-800 leading-tight">收據辨識</p>
+                                <p class="text-[10px] font-bold text-slate-400">{{ receipt.phase === 'review' ? '確認一下品項和金額，可以直接修改' : 'AI 會讀出品項、價格和總額' }}</p>
+                            </div>
+                            <button type="button" @click.stop="closeReceipt" class="w-8 h-8 bg-slate-100 rounded-full text-slate-500 flex justify-center items-center shrink-0"><i class="fa-solid fa-xmark text-sm"></i></button>
+                        </div>
+
+                        <div class="flex-1 overflow-y-auto overscroll-contain hide-scrollbar px-5 py-4 space-y-4">
+                            <!-- 辨識中 -->
+                            <div v-if="receipt.phase === 'loading'" class="text-center py-4">
+                                <img v-if="receipt.img" :src="receipt.img" class="mx-auto h-44 rounded-xl object-contain bg-slate-100 mb-4">
+                                <i class="fa-solid fa-circle-notch animate-spin text-2xl" :style="{ color: currentTheme.accent }"></i>
+                                <p class="text-[13px] font-bold text-slate-600 mt-2">辨識中…大約 5–15 秒</p>
+                            </div>
+                            <!-- 失敗 -->
+                            <div v-else-if="receipt.phase === 'error'" class="text-center py-4">
+                                <i class="fa-solid fa-circle-exclamation text-2xl text-[#9E0E26]"></i>
+                                <p class="text-[13px] font-bold text-slate-700 mt-2 leading-relaxed whitespace-pre-line">{{ receipt.error }}</p>
+                                <label class="inline-block mt-4 text-[12px] font-bold px-4 py-2.5 rounded-lg bg-[#1e293b] text-white cursor-pointer active:scale-95">
+                                    <i class="fa-solid fa-camera mr-1.5"></i>重新選照片
+                                    <input type="file" accept="image/*" class="hidden" @change="onReceiptFile($event, receipt.target)">
+                                </label>
+                            </div>
+                            <!-- 確認 -->
+                            <template v-else-if="receipt.phase === 'review' && receipt.data">
+                                <div class="flex gap-3">
+                                    <img v-if="receipt.img" :src="receipt.img" @click="receipt.zoom = !receipt.zoom" class="w-16 h-20 rounded-lg object-cover bg-slate-100 shrink-0 border border-slate-200 cursor-zoom-in">
+                                    <div class="flex-1 min-w-0 space-y-2">
+                                        <input type="text" v-model="receipt.data.storeZh" placeholder="店名" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-[14px] font-bold outline-none focus:border-brand">
+                                        <div class="flex items-center gap-2">
+                                            <input type="date" v-model="receipt.data.date" class="flex-1 min-w-0 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-[12px] font-sans font-bold outline-none">
+                                            <select v-model="receipt.data.currency" class="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-[12px] font-bold outline-none">
+                                                <option value="JPY">JPY ¥</option>
+                                                <option value="TWD">NTD $</option>
+                                            </select>
+                                        </div>
+                                        <p v-if="receipt.data.store && receipt.data.store !== receipt.data.storeZh" class="text-[10px] font-bold text-slate-400 truncate">{{ receipt.data.store }}</p>
+                                    </div>
+                                </div>
+                                <img v-if="receipt.zoom && receipt.img" :src="receipt.img" @click="receipt.zoom = false" class="w-full rounded-xl border border-slate-200">
+                                <p v-if="receipt.data.otherCur" class="text-[11px] font-bold text-[#9E0E26] bg-[#9E0E26]/5 rounded-lg px-3 py-2 leading-relaxed">收據幣別是 {{ receipt.data.otherCur }}，App 目前只能用日幣／台幣記帳，請先換算後修改金額。</p>
+
+                                <div class="rounded-xl border border-slate-200 overflow-hidden">
+                                    <div class="flex items-center px-3 py-2 bg-slate-50 border-b border-slate-200">
+                                        <span class="text-[11px] font-bold text-slate-500 flex-1">品項 <span class="font-sans">{{ receipt.data.items.filter(i => i.on).length }}/{{ receipt.data.items.length }}</span></span>
+                                        <button type="button" @click.stop="toggleAllReceiptItems" class="text-[11px] font-bold text-[#1A5F8A]">{{ receipt.data.items.every(i => i.on) ? '全不選' : '全選' }}</button>
+                                    </div>
+                                    <div v-for="(it, ii) in receipt.data.items" :key="'rci'+ii" class="flex items-start px-3 py-2 border-b border-slate-100 last:border-0" :class="it.on ? '' : 'opacity-45'">
+                                        <button type="button" @click.stop="it.on = !it.on; recalcReceipt()" class="w-5 h-5 mt-1.5 rounded-full border-2 flex items-center justify-center shrink-0 mr-2.5"
+                                                :style="it.on ? { backgroundColor: currentTheme.accent, borderColor: currentTheme.accent, color: currentTheme.onAccent } : { borderColor: '#CBD5E1' }">
+                                            <i v-if="it.on" class="fa-solid fa-check text-[9px]"></i>
+                                        </button>
+                                        <div class="flex-1 min-w-0">
+                                            <input type="text" v-model="it.zh" class="w-full bg-transparent text-[13px] font-bold text-slate-800 outline-none border-b border-transparent focus:border-slate-200 py-1">
+                                            <p v-if="it.name && it.name !== it.zh" class="text-[10px] font-bold text-slate-400 truncate">{{ it.name }}<span v-if="it.qty > 1" class="font-sans"> ×{{ it.qty }}</span></p>
+                                        </div>
+                                        <input type="text" inputmode="decimal" v-model="it.price" @input="recalcReceipt" class="w-[78px] ml-2 mt-0.5 text-right bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-[13px] font-sans font-bold outline-none focus:border-brand">
+                                    </div>
+                                    <button type="button" @click.stop="receipt.data.items.push({ name: '', zh: '', qty: 1, price: '', on: true })" class="w-full text-[11px] font-bold text-slate-400 py-2 bg-white active:bg-slate-50"><i class="fa-solid fa-plus mr-1"></i>新增品項</button>
+                                </div>
+
+                                <div class="rounded-xl px-3.5 py-3 flex items-center" :style="{ backgroundColor: currentTheme.soft }">
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-[11px] font-bold" :style="{ color: currentTheme.text }">記帳金額</p>
+                                        <p v-if="receipt.data.total" class="text-[10px] font-bold text-slate-400 font-sans">收據總額 {{ curSym(receipt.data.currency) }}{{ formatCurrency(receipt.data.total) }}<span v-if="receipt.data.tax">（含稅 {{ formatCurrency(receipt.data.tax) }}）</span></p>
+                                    </div>
+                                    <span class="text-[15px] font-bold text-slate-500 font-sans mr-1">{{ curSym(receipt.data.currency) }}</span>
+                                    <input type="text" inputmode="decimal" v-model="receipt.amount" class="w-[110px] text-right bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-[18px] font-sans font-bold outline-none" :style="{ color: currentTheme.vivid }">
+                                </div>
+
+                                <div v-if="receipt.target !== 'form'" class="space-y-2.5">
+                                    <div class="grid grid-cols-2 gap-1 p-1 rounded-xl bg-slate-100">
+                                        <button type="button" @click.stop="receipt.mode = 'new'" class="py-2 rounded-lg text-[12px] font-bold" :class="receipt.mode === 'new' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500'"><i class="fa-solid fa-plus mr-1"></i>新增一張卡片</button>
+                                        <button type="button" @click.stop="receipt.mode = 'existing'" class="py-2 rounded-lg text-[12px] font-bold" :class="receipt.mode === 'existing' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500'"><i class="fa-solid fa-link mr-1"></i>加到現有行程</button>
+                                    </div>
+                                    <div class="flex gap-2">
+                                        <select v-model.number="receipt.dayIdx" @change="receipt.spotIdx = -1" class="w-full min-w-0 bg-white border border-slate-200 rounded-xl px-3 py-2 text-[12px] font-bold outline-none focus:border-brand h-[36px] w-[42%] shrink-0">
+                                            <option v-for="(d, di) in itinerary" :key="'rd'+di" :value="di">{{ d.label }}・{{ d.shortDate }}</option>
+                                        </select>
+                                        <select v-if="receipt.mode === 'existing'" v-model.number="receipt.spotIdx" class="w-full min-w-0 bg-white border border-slate-200 rounded-xl px-3 py-2 text-[12px] font-bold outline-none focus:border-brand h-[36px]">
+                                            <option :value="-1" disabled>選擇行程…</option>
+                                            <option v-for="(sp, si) in (itinerary[receipt.dayIdx] ? itinerary[receipt.dayIdx].spots : [])" :key="'rs'+si" :value="si">{{ sp.startTime ? sp.startTime + ' ' : '' }}{{ sp.name || '未命名' }}</option>
+                                        </select>
+                                        <input v-else type="time" v-model="receipt.data.time" class="w-full min-w-0 bg-white border border-slate-200 rounded-xl px-3 py-2 text-[12px] font-bold outline-none focus:border-brand h-[36px] font-sans">
+                                    </div>
+                                    <div class="grid grid-cols-3 gap-2">
+                                        <select v-model="receipt.category" class="w-full min-w-0 bg-white border border-slate-200 rounded-xl px-3 py-2 text-[12px] font-bold outline-none focus:border-brand h-[36px] px-2">
+                                            <option value="">未分類</option>
+                                            <option v-for="c in costCategoryList" :key="'rcc'+c.name" :value="c.name">{{ c.emoji }} {{ c.name }}</option>
+                                        </select>
+                                        <select v-model="receipt.payer" class="w-full min-w-0 bg-white border border-slate-200 rounded-xl px-3 py-2 text-[12px] font-bold outline-none focus:border-brand h-[36px] px-2">
+                                            <option value="">付款人</option>
+                                            <option v-for="p in customPayers" :key="'rp'+p" :value="p">{{ p }}</option>
+                                        </select>
+                                        <select v-model="receipt.method" class="w-full min-w-0 bg-white border border-slate-200 rounded-xl px-3 py-2 text-[12px] font-bold outline-none focus:border-brand h-[36px] px-2">
+                                            <option value="現金">💵 現金</option>
+                                            <option value="信用卡">💳 信用卡</option>
+                                            <option value="簽帳金融卡">💳 簽帳卡</option>
+                                            <option value="西瓜卡/交通卡">🪪 交通卡</option>
+                                            <option v-for="m in customPaymentMethods" :key="'rm'+m" :value="m">💳 {{ m }}</option>
+                                        </select>
+                                    </div>
+                                    <p v-if="receipt.mode === 'existing'" class="text-[10px] font-bold text-slate-400 leading-relaxed px-1">金額會加到那個行程原本的花費上；清單裡名稱對得上的「必買」也會自動打勾。</p>
+                                </div>
+                            </template>
+                        </div>
+
+                        <div v-if="receipt.phase === 'review'" class="px-5 pt-2 pb-5 shrink-0 border-t border-slate-100">
+                            <button type="button" @click.stop="applyReceipt" class="w-full bg-slate-800 text-white font-bold py-3.5 rounded-xl shadow active:scale-[0.98]">
+                                <i class="fa-solid fa-check mr-1.5"></i>{{ receipt.target === 'form' ? '帶入這個行程' : '加入花費' }}
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -1286,6 +1419,19 @@
                                                     <span>{{ a.person }} 要還</span><span class="font-sans">{{ selectedSpot.currency === 'JPY' ? '¥' : 'NT$' }}{{ formatCurrency(a.amount) }}</span>
                                                 </div>
                                             </div>
+                                            <div v-if="selectedSpot.receipts && selectedSpot.receipts.length" class="mt-2 ml-5 space-y-2">
+                                                <div v-for="(r, ri) in selectedSpot.receipts" :key="'vrc'+ri" class="rounded-lg border border-slate-100 bg-slate-50/70 px-2.5 py-2">
+                                                    <div class="flex items-center text-[10px] font-bold text-slate-400 mb-1">
+                                                        <i class="fa-solid fa-receipt mr-1"></i>
+                                                        <span class="truncate flex-1">{{ r.storeZh || r.store || '收據明細' }}<span v-if="r.date" class="font-sans"> ・{{ r.date }}</span></span>
+                                                        <span class="font-sans ml-2">{{ curSym(r.currency) }}{{ formatCurrency(r.total) }}</span>
+                                                    </div>
+                                                    <div v-for="(it, ii) in r.items" :key="'vri'+ii" class="flex items-baseline text-[12px] py-0.5">
+                                                        <span class="flex-1 min-w-0 font-bold text-slate-700 truncate">{{ it.zh || it.name }}<span v-if="it.qty > 1" class="text-slate-400 font-sans"> ×{{ it.qty }}</span></span>
+                                                        <span class="font-sans font-bold text-slate-600 ml-2 whitespace-nowrap">{{ curSym(r.currency) }}{{ formatCurrency(it.price) }}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
 
@@ -1443,7 +1589,21 @@
                             
                             <!-- 💰 進階花費與記帳系統 -->
                             <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 space-y-4">
-                                <label class="block text-xs font-bold text-slate-700 border-b border-slate-100 pb-2"><i class="fa-solid fa-coins mr-1 text-brand"></i> 花費與記帳</label>
+                                <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                                    <label class="text-xs font-bold text-slate-700"><i class="fa-solid fa-coins mr-1 text-brand"></i> 花費與記帳</label>
+                                    <label class="text-[11px] font-bold px-2.5 py-1 rounded-full cursor-pointer active:scale-95" :style="{ backgroundColor: currentTheme.soft, color: currentTheme.text }">
+                                        <i class="fa-solid fa-receipt mr-1"></i>掃描收據
+                                        <input type="file" accept="image/*" class="hidden" @change="onReceiptFile($event, 'form')">
+                                    </label>
+                                </div>
+                                <div v-if="selectedSpot.receipts && selectedSpot.receipts.length" class="space-y-1.5">
+                                    <div v-for="(r, ri) in selectedSpot.receipts" :key="'erc'+ri" class="flex items-center rounded-lg bg-slate-50 border border-slate-100 px-2.5 py-1.5">
+                                        <i class="fa-solid fa-receipt text-slate-300 text-[11px] mr-2"></i>
+                                        <span class="flex-1 min-w-0 text-[12px] font-bold text-slate-600 truncate">{{ r.storeZh || r.store || '收據' }}・{{ (r.items || []).length }} 項</span>
+                                        <span class="text-[12px] font-bold text-slate-500 font-sans ml-2">{{ curSym(r.currency) }}{{ formatCurrency(r.total) }}</span>
+                                        <button type="button" @click.stop="removeReceipt(ri)" class="w-6 h-6 ml-1 text-slate-300 hover:text-red-400 flex items-center justify-center shrink-0"><i class="fa-solid fa-xmark text-[11px]"></i></button>
+                                    </div>
+                                </div>
                                 
                                 <div class="flex space-x-2">
                                     <div class="w-1/2">
@@ -1971,6 +2131,18 @@
                                 </div>
                             </div>
 
+                            <!-- 📷 收據辨識 -->
+                            <div>
+                                <p class="text-[10px] font-bold text-slate-400 tracking-widest px-1 mb-1.5">收據辨識（AI）</p>
+                                <div class="rounded-2xl border border-slate-100 p-3.5">
+                                    <p class="text-[11px] font-bold text-slate-400 leading-relaxed">用同一個 Firebase 專案的 AI Logic（Gemini）辨識收據。照片只拿去辨識，App 不會另外存。</p>
+                                    <label class="block text-[11px] font-bold text-slate-500 mt-2.5 mb-1">reCAPTCHA 網站金鑰（App Check 用）</label>
+                                    <input type="text" v-model.trim="tripInfo.aiSiteKey" placeholder="6L…（貼上 reCAPTCHA v3 的網站金鑰）" autocomplete="off" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2 text-[12px] font-sans outline-none">
+                                    <p v-if="!sync.enabled" class="text-[11px] font-bold text-[#9E0E26] mt-2">要先開啟上面的「雲端同步」才能使用</p>
+                                    <p v-else class="text-[10px] font-bold text-slate-400 mt-2">金鑰會同步給旅伴，旅伴不用再設定。</p>
+                                </div>
+                            </div>
+
                             <!-- 外觀主題 -->
                             <div>
                                 <div class="flex items-baseline justify-between px-1 mb-2">
@@ -2330,6 +2502,8 @@
         let _leafletMap = null, _leafletLayer = null, _leafletResizeObs = null, _mapRenderToken = 0;
         let _expenseChart = null;
         let _pdfDoc = null;
+        let _aiModel = null, _aiSig = '';
+        const FB_MODULAR_VER = '12.19.0', RECEIPT_MODEL = 'gemini-3.5-flash';
         let _fbApp = null, _fbDb = null, _fbRef = null, _fbUnsub = null, _syncTimer = null, _syncLast = {}, _syncPendingRemote = null;
         let _photosUp = null, _photoFetching = false;
         const _geoCache = {};
@@ -2642,7 +2816,7 @@
                     },
                     saveTimeout: null, isStateLoaded: false,
                     sortableInstances: {},
-                    isDraggingSpot: false, justDraggedSpot: false, swipe: { id: null, open: null, offset: 0, active: false }, undoDelete: null, justSwiped: false,
+                    isDraggingSpot: false, justDraggedSpot: false, receipt: { open: false, phase: '', target: 'new', img: '', b64: '', error: '', data: null, amount: '', dayIdx: 0, spotIdx: -1, mode: 'new', category: '', payer: '', method: '信用卡', zoom: false }, swipe: { id: null, open: null, offset: 0, active: false }, undoDelete: null, justSwiped: false,
                     showExpenseDetail: false, expenseDetailKey: '',
                     showSwapModal: false, toastMsg: '', showSettleDetail: false, airlineGroups: AIRLINE_GROUPS, photoDrag: { obj: null },
                     sync: { enabled: false, config: null, code: '', status: 'off', lastAt: 0, error: '', deviceId: '', joining: false }, syncConfigText: '', syncInviteText: '', isApplyingRemote: false,
@@ -5004,6 +5178,221 @@
                         if(!this.hasCustomOrder(this.activeDay)) this.autoSortCurrentDay();
                     }
                     this.showSpotModal = false;
+                },
+
+                // ===== 📷 收據辨識（Firebase AI Logic + Gemini） =====
+                curSym(c) { return ({ JPY: '¥', TWD: 'NT$', KRW: '₩', USD: 'US$', EUR: '€', CNY: '¥', HKD: 'HK$' })[c] || (c ? c + ' ' : ''); },
+                receiptNum(v) { const n = parseFloat(String(v == null ? '' : v).replace(/[^\d.\-]/g, '')); return isFinite(n) ? n : 0; },
+                async getReceiptModel() {
+                    const cfg = this.sync.config;
+                    if (!cfg || !cfg.apiKey || !cfg.projectId) throw new Error('NO_CONFIG');
+                    const key = (this.tripInfo.aiSiteKey || '').trim();
+                    const sig = cfg.projectId + '|' + key;
+                    if (_aiModel && _aiSig === sig) return _aiModel;
+                    const base = `https://www.gstatic.com/firebasejs/${FB_MODULAR_VER}/`;
+                    const appMod = await import(base + 'firebase-app.js');
+                    const name = 'receiptAI-' + Array.from(sig).reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 7).toString(36);
+                    const app = appMod.getApps().find(a => a.name === name) || appMod.initializeApp(cfg, name);
+                    if (key) {
+                        const ac = await import(base + 'firebase-app-check.js');
+                        try { ac.initializeAppCheck(app, { provider: new ac.ReCaptchaV3Provider(key), isTokenAutoRefreshEnabled: true }); } catch (e) { /* 已經初始化過 */ }
+                    }
+                    const aiMod = await import(base + 'firebase-ai.js');
+                    const ai = aiMod.getAI(app, { backend: new aiMod.GoogleAIBackend() });
+                    _aiModel = aiMod.getGenerativeModel(ai, { model: RECEIPT_MODEL, generationConfig: { responseMimeType: 'application/json', temperature: 0.1 } });
+                    _aiSig = sig;
+                    return _aiModel;
+                },
+                receiptCompress(file) {
+                    return new Promise((resolve, reject) => {
+                        const fr = new FileReader();
+                        fr.onerror = () => reject(new Error('READ_FAIL'));
+                        fr.onload = () => {
+                            const img = new Image();
+                            img.onerror = () => reject(new Error('READ_FAIL'));
+                            img.onload = () => {
+                                const max = 1600, sc = Math.min(1, max / Math.max(img.width, img.height));
+                                const c = document.createElement('canvas');
+                                c.width = Math.round(img.width * sc); c.height = Math.round(img.height * sc);
+                                c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+                                const url = c.toDataURL('image/jpeg', 0.85);
+                                resolve({ url, b64: url.split(',')[1] });
+                            };
+                            img.src = fr.result;
+                        };
+                        fr.readAsDataURL(file);
+                    });
+                },
+                receiptPrompt() {
+                    const cats = this.costCategoryList.map(c => c.name).join('、');
+                    return `你是收據辨識助手。照片是一張購物或餐廳收據，可能是日文、英文、中文或韓文。請只回傳 JSON（不要其他文字），格式：
+{"store":"收據上的原始店名","storeZh":"繁體中文店名（品牌名可保留原文，例如 7-Eleven、唐吉訶德、松本清）","date":"YYYY-MM-DD 或空字串","time":"HH:MM（24 小時制）或空字串","currency":"ISO 幣別代碼，例如 JPY、TWD、KRW、USD","items":[{"name":"原文品名","zh":"簡短口語的繁體中文品名","qty":數量,"price":該行實付金額}],"tax":稅額或null,"total":收據上的應付總額,"payment":"現金、信用卡、交通卡 或空字串","category":"從這些類別挑一個最適合的：${cats}"}
+規則：
+- 數字一律用純數字，不要貨幣符號或千分位逗號。
+- price 是那一行的金額（數量×單價）；折扣、優惠券用負數單獨一行。
+- 不要把 小計、合計、お預り、お釣り、ポイント、免稅手續 這類列成品項。
+- 外稅（稅另計）時，稅不要放進品項，但 total 要包含稅。
+- 看不清楚的品名照猜最可能的，並在 zh 後面加「(?)」。
+- 如果照片不是收據，回傳 {"error":"not_receipt"}。`;
+                },
+                async onReceiptFile(e, target) {
+                    const file = e.target.files && e.target.files[0];
+                    e.target.value = '';
+                    if (!file) return;
+                    if (!this.sync.config) { alert('收據辨識要用到 Firebase：請先到「設定 → 雲端同步」開啟同步。'); return; }
+                    const prev = this.receipt;
+                    this.receipt = { open: true, phase: 'loading', target, img: '', b64: '', error: '', data: null, amount: '', dayIdx: this.activeDay, spotIdx: -1, mode: 'new',
+                                     category: '', payer: prev.payer || this.tripInfo.passengerName || '', method: '信用卡', zoom: false };
+                    try {
+                        const { url, b64 } = await this.receiptCompress(file);
+                        this.receipt.img = url; this.receipt.b64 = b64;
+                        const model = await this.getReceiptModel();
+                        const res = await model.generateContent([this.receiptPrompt(), { inlineData: { mimeType: 'image/jpeg', data: b64 } }]);
+                        const text = res.response.text();
+                        const raw = this.parseReceiptJSON(text);
+                        if (!raw || raw.error) throw new Error(raw && raw.error === 'not_receipt' ? 'NOT_RECEIPT' : 'PARSE_FAIL');
+                        if (!this.receipt.open) return;
+                        this.receipt.data = this.normalizeReceipt(raw);
+                        const d = this.receipt.data;
+                        const di = this.itinerary.findIndex(x => x.rawDate === d.date);
+                        const ti = this.itinerary.findIndex(x => this.isToday(x));
+                        this.receipt.dayIdx = di >= 0 ? di : (ti >= 0 ? ti : this.activeDay);
+                        if (raw.category && this.costCategoryList.some(c => c.name === raw.category)) this.receipt.category = raw.category;
+                        if (d.payment) this.receipt.method = d.payment;
+                        this.recalcReceipt();
+                        this.receipt.phase = 'review';
+                    } catch (err) {
+                        console.warn('receipt', err);
+                        if (!this.receipt.open) return;
+                        this.receipt.error = this.receiptErrorText(err);
+                        this.receipt.phase = 'error';
+                    }
+                },
+                parseReceiptJSON(text) {
+                    if (!text) return null;
+                    try { return JSON.parse(text); } catch (e) {}
+                    const m = String(text).match(/\{[\s\S]*\}/);
+                    if (m) { try { return JSON.parse(m[0]); } catch (e) {} }
+                    return null;
+                },
+                normalizeReceipt(raw) {
+                    const cur = String(raw.currency || 'JPY').toUpperCase().trim();
+                    const known = cur === 'JPY' || cur === 'TWD';
+                    const items = (Array.isArray(raw.items) ? raw.items : []).map(it => ({
+                        name: String(it.name || '').trim(), zh: String(it.zh || it.name || '').trim(),
+                        qty: Math.max(1, Math.round(this.receiptNum(it.qty) || 1)), price: String(Math.round(this.receiptNum(it.price) * 100) / 100), on: true
+                    })).filter(it => it.zh || it.name || this.receiptNum(it.price));
+                    const pay = String(raw.payment || '');
+                    return {
+                        store: String(raw.store || '').trim(), storeZh: String(raw.storeZh || raw.store || '').trim(),
+                        date: /^\d{4}-\d{2}-\d{2}$/.test(raw.date || '') ? raw.date : '', time: /^\d{1,2}:\d{2}$/.test(raw.time || '') ? raw.time.padStart(5, '0') : '',
+                        currency: known ? cur : 'JPY', otherCur: known ? '' : cur,
+                        tax: this.receiptNum(raw.tax) || 0, total: this.receiptNum(raw.total) || 0,
+                        payment: /現金|cash/i.test(pay) ? '現金' : /交通|suica|pasmo|icoca/i.test(pay) ? '西瓜卡/交通卡' : /信用|card|credit|visa|master|jcb/i.test(pay) ? '信用卡' : '',
+                        items
+                    };
+                },
+                recalcReceipt() {
+                    const d = this.receipt.data; if (!d) return;
+                    const on = d.items.filter(i => i.on);
+                    const sum = on.reduce((a, i) => a + this.receiptNum(i.price), 0);
+                    const all = on.length === d.items.length;
+                    // 全部勾選 → 用收據總額（含稅）；只勾部分 → 用勾選品項加總
+                    const v = all && d.total ? d.total : sum;
+                    this.receipt.amount = String(Math.round(v * 100) / 100);
+                },
+                toggleAllReceiptItems() {
+                    const d = this.receipt.data; if (!d) return;
+                    const to = !d.items.every(i => i.on);
+                    d.items.forEach(i => { i.on = to; });
+                    this.recalcReceipt();
+                },
+                receiptErrorText(err) {
+                    const m = String((err && (err.code || '')) + ' ' + (err && err.message || '')).toLowerCase();
+                    if (m.includes('no_config')) return '還沒開啟雲端同步。\n請先到「設定 → 雲端同步」設定 Firebase。';
+                    if (m.includes('read_fail')) return '這張照片讀不出來，換一張試試看。';
+                    if (m.includes('not_receipt')) return '看起來不像收據 🤔\n請拍清楚整張收據再試一次。';
+                    if (m.includes('parse_fail')) return '辨識結果怪怪的，請再拍一次（光線充足、收據攤平）。';
+                    if (m.includes('app-check') || m.includes('appcheck') || m.includes('recaptcha')) return 'App Check 驗證沒通過。\n請確認「設定 → 收據辨識」的網站金鑰，以及 reCAPTCHA 網域有加上你的 github.io 網址。';
+                    if (!navigator.onLine || m.includes('failed to fetch') || m.includes('imported module') || m.includes('network')) return '連不上網路，或 AI 元件載入失敗。\n請確認網路後再試。';
+                    if (m.includes('429') || m.includes('quota') || m.includes('exhausted')) return '今天的免費額度用完了（或太頻繁），請稍後再試。';
+                    if (m.includes('403') || m.includes('permission') || m.includes('not enabled') || m.includes('disabled') || m.includes('api-not-enabled')) return 'Firebase 的 AI Logic 還沒開啟。\n請到 Firebase 主控台 → AI Logic → 開始使用，選 Gemini Developer API。';
+                    if (m.includes('404') || m.includes('not found')) return 'AI 模型暫時找不到，請稍後再試。';
+                    return '辨識失敗了，請再試一次。\n（' + ((err && err.message) || '未知錯誤').slice(0, 120) + '）';
+                },
+                closeReceipt() { this.receipt = { ...this.receipt, open: false, phase: '', data: null, img: '', b64: '' }; },
+                receiptSpotType(cat) {
+                    if (/食|餐|美食|咖啡|飲/.test(cat || '')) return 'food';
+                    if (/交通/.test(cat || '')) return 'transit';
+                    if (/住宿/.test(cat || '')) return 'hotel';
+                    if (/門票|活動|景點/.test(cat || '')) return 'spot';
+                    return 'shopping';
+                },
+                addReceiptToSpot(spot, rec, amount) {
+                    const cur = rec.currency;
+                    const old = this.receiptNum(spot.cost);
+                    if (!old) { spot.cost = amount; spot.currency = cur; }
+                    else {
+                        const sc = spot.currency || 'TWD';
+                        let add = amount;
+                        if (sc !== cur) add = cur === 'JPY' ? amount * this.exchangeRateJPYtoTWD : amount / (this.exchangeRateJPYtoTWD || 1);
+                        spot.cost = Math.round((old + add) * 100) / 100;
+                    }
+                    if (!Array.isArray(spot.receipts)) spot.receipts = [];
+                    spot.receipts.push(rec);
+                    // 清單裡名稱對得上的必買 → 自動打勾
+                    let hit = 0;
+                    (spot.checklist || []).forEach(c => {
+                        if (c.done || !c.text) return;
+                        const t = c.text.replace(/\s/g, '').toLowerCase();
+                        if (t.length < 2) return;
+                        const m = rec.items.find(i => { const z = (i.zh + ' ' + i.name).replace(/\s/g, '').toLowerCase(); return z.includes(t) || (i.zh.length >= 2 && t.includes(i.zh.replace(/\s|\(\?\)/g, '').toLowerCase())); });
+                        if (m) { c.done = true; if (!c.price) c.price = m.price; hit++; }
+                    });
+                    return hit;
+                },
+                applyReceipt() {
+                    const R = this.receipt, d = R.data; if (!d) return;
+                    const amount = Math.round(this.receiptNum(R.amount) * 100) / 100;
+                    if (!amount) { alert('記帳金額是 0，請確認一下'); return; }
+                    const rec = { id: 'r' + Date.now().toString(36), store: d.store, storeZh: d.storeZh, date: d.date, currency: d.currency, total: amount,
+                                  items: d.items.filter(i => i.on && (i.zh || i.name)).map(i => ({ name: i.name, zh: i.zh, qty: i.qty, price: this.receiptNum(i.price) })) };
+                    let msg = '';
+                    if (R.target === 'form') {
+                        const sp = this.selectedSpot;
+                        const hit = this.addReceiptToSpot(sp, rec, amount);
+                        if (!sp.costCategory && R.category) sp.costCategory = R.category;
+                        if (d.payment && !sp.paymentMethod) sp.paymentMethod = d.payment;
+                        msg = '已帶入收據金額' + (hit ? `，清單打勾 ${hit} 項` : '') + '（記得按儲存）';
+                    } else {
+                        const day = this.itinerary[R.dayIdx];
+                        if (!day) { alert('找不到這一天'); return; }
+                        if (R.mode === 'existing') {
+                            const sp = day.spots[R.spotIdx];
+                            if (!sp) { alert('請先選擇要加到哪個行程'); return; }
+                            const hit = this.addReceiptToSpot(sp, rec, amount);
+                            if (!sp.costCategory && R.category) sp.costCategory = R.category;
+                            if (!sp.payer && R.payer) sp.payer = R.payer;
+                            if (!sp.paymentMethod && R.method) sp.paymentMethod = R.method;
+                            msg = `已加到「${sp.name || '行程'}」` + (hit ? `，清單打勾 ${hit} 項` : '');
+                        } else {
+                            const spot = { id: this.makeSpotId(), type: this.receiptSpotType(R.category), name: d.storeZh || d.store || '購物', startTime: d.time || '', endTime: '', durationH: '', durationM: '',
+                                           desc: '', location: d.store && d.store !== d.storeZh ? d.store : '', googleMapUrl: '', hours: '', warning: '',
+                                           cost: amount, currency: d.currency, costCategory: R.category || '', payer: R.payer || '', paymentMethod: R.method || '信用卡', lat: null, lng: null,
+                                           photoSpotDesc: '', coverImage: '', coverPosition: 50, tags: [], checklist: [], links: [], images: [], files: [], legs: [], seats: [],
+                                           phone: '', transport: '', bookingRef: '', receipts: [rec] };
+                            day.spots.push(spot);
+                            if (!day.customSorted) day.spots.sort((a, b) => (a.startTime || a.checkInTime || '23:59').localeCompare(b.startTime || b.checkInTime || '23:59'));
+                            msg = `已新增到 ${day.label}`;
+                        }
+                    }
+                    this.closeReceipt();
+                    this.showToast(msg);
+                },
+                removeReceipt(ri) {
+                    const sp = this.selectedSpot; if (!sp || !Array.isArray(sp.receipts)) return;
+                    if (!confirm('移除這張收據明細？（花費金額不會自動扣掉，需要的話請手動修改）')) return;
+                    sp.receipts.splice(ri, 1);
                 },
                 // --- 行程卡片：左滑刪除 ---
                 swipeOffset(id) {
