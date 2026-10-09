@@ -2136,8 +2136,8 @@
                                 <p class="text-[10px] font-bold text-slate-400 tracking-widest px-1 mb-1.5">收據辨識（AI）</p>
                                 <div class="rounded-2xl border border-slate-100 p-3.5">
                                     <p class="text-[11px] font-bold text-slate-400 leading-relaxed">用同一個 Firebase 專案的 AI Logic（Gemini）辨識收據。照片只拿去辨識，App 不會另外存。</p>
-                                    <label class="block text-[11px] font-bold text-slate-500 mt-2.5 mb-1">reCAPTCHA 網站金鑰（App Check 用）</label>
-                                    <input type="text" v-model.trim="tripInfo.aiSiteKey" placeholder="6L…（貼上 reCAPTCHA v3 的網站金鑰）" autocomplete="off" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2 text-[12px] font-sans outline-none">
+                                    <label class="block text-[11px] font-bold text-slate-500 mt-2.5 mb-1">reCAPTCHA 網站金鑰（Fraud Defense / App Check 用）</label>
+                                    <input type="text" v-model.trim="tripInfo.aiSiteKey" placeholder="6L…（貼上 reCAPTCHA 網站金鑰）" autocomplete="off" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2 text-[12px] font-sans outline-none">
                                     <p v-if="!sync.enabled" class="text-[11px] font-bold text-[#9E0E26] mt-2">要先開啟上面的「雲端同步」才能使用</p>
                                     <p v-else class="text-[10px] font-bold text-slate-400 mt-2">金鑰會同步給旅伴，旅伴不用再設定。</p>
                                 </div>
@@ -5195,7 +5195,7 @@
                     const app = appMod.getApps().find(a => a.name === name) || appMod.initializeApp(cfg, name);
                     if (key) {
                         const ac = await import(base + 'firebase-app-check.js');
-                        try { ac.initializeAppCheck(app, { provider: new ac.ReCaptchaV3Provider(key), isTokenAutoRefreshEnabled: true }); } catch (e) { /* 已經初始化過 */ }
+                        try { ac.initializeAppCheck(app, { provider: new ac.ReCaptchaEnterpriseProvider(key), isTokenAutoRefreshEnabled: true }); /* Fraud Defense（舊稱 reCAPTCHA Enterprise） */ } catch (e) { /* 已經初始化過 */ }
                     }
                     const aiMod = await import(base + 'firebase-ai.js');
                     const ai = aiMod.getAI(app, { backend: new aiMod.GoogleAIBackend() });
@@ -5313,7 +5313,7 @@
                     if (m.includes('read_fail')) return '這張照片讀不出來，換一張試試看。';
                     if (m.includes('not_receipt')) return '看起來不像收據 🤔\n請拍清楚整張收據再試一次。';
                     if (m.includes('parse_fail')) return '辨識結果怪怪的，請再拍一次（光線充足、收據攤平）。';
-                    if (m.includes('app-check') || m.includes('appcheck') || m.includes('recaptcha')) return 'App Check 驗證沒通過。\n請確認「設定 → 收據辨識」的網站金鑰，以及 reCAPTCHA 網域有加上你的 github.io 網址。';
+                    if (m.includes('app-check') || m.includes('appcheck') || m.includes('recaptcha')) return 'App Check 驗證沒通過。\n請確認「設定 → 收據辨識」的網站金鑰，以及 Firebase App Check 是用 Fraud Defense 註冊、reCAPTCHA 網域有加上你的 github.io 網址。';
                     if (!navigator.onLine || m.includes('failed to fetch') || m.includes('imported module') || m.includes('network')) return '連不上網路，或 AI 元件載入失敗。\n請確認網路後再試。';
                     if (m.includes('429') || m.includes('quota') || m.includes('exhausted')) return '今天的免費額度用完了（或太頻繁），請稍後再試。';
                     if (m.includes('403') || m.includes('permission') || m.includes('not enabled') || m.includes('disabled') || m.includes('api-not-enabled')) return 'Firebase 的 AI Logic 還沒開啟。\n請到 Firebase 主控台 → AI Logic → 開始使用，選 Gemini Developer API。';
