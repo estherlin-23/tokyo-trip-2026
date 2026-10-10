@@ -2139,8 +2139,11 @@
                                     <p class="text-[11px] font-bold text-slate-400 leading-relaxed">用同一個 Firebase 專案的 AI Logic（Gemini）辨識收據。照片只拿去辨識，App 不會另外存。</p>
                                     <label class="block text-[11px] font-bold text-slate-500 mt-2.5 mb-1">reCAPTCHA 網站金鑰（Fraud Defense / App Check 用）</label>
                                     <input type="text" v-model.trim="tripInfo.aiSiteKey" placeholder="6L…（貼上 reCAPTCHA 網站金鑰）" autocomplete="off" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2 text-[12px] font-sans outline-none">
-                                    <p v-if="!sync.enabled" class="text-[11px] font-bold text-[#9E0E26] mt-2">要先開啟上面的「雲端同步」才能使用</p>
+                                    <label class="block text-[11px] font-bold text-slate-500 mt-3 mb-1">Gemini API 金鑰（選填・AI Studio 取得）</label>
+                                    <input type="text" v-model.trim="tripInfo.aiApiKey" placeholder="AIza…（有填就直接用這把，不經過 AI Logic）" autocomplete="off" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2 text-[12px] font-sans outline-none">
+                                    <p v-if="!sync.enabled && !tripInfo.aiApiKey" class="text-[11px] font-bold text-[#9E0E26] mt-2">要先開啟上面的「雲端同步」，或填入 Gemini API 金鑰</p>
                                     <p v-else class="text-[10px] font-bold text-slate-400 mt-2">金鑰會同步給旅伴，旅伴不用再設定。</p>
+                                    <p class="text-[10px] font-bold text-slate-300 mt-1 font-sans">App 版本 36</p>
                                 </div>
                             </div>
 
@@ -5207,9 +5210,38 @@
                 },
                 isModelMissing(err) {
                     const m = String((err && (err.code || '')) + ' ' + (err && err.message || '')).toLowerCase();
+                    if (/genai[ _-]?config|config[ _-]?not[ _-]?found|app[ _-]?check|permission|api key/.test(m)) return false;   // 設定問題，不是模型問題
                     return /404|not[ _-]?found|is not supported|unsupported model|no longer available|deprecated|retired/.test(m);
                 },
+                // 方案 B：直接用 Google AI Studio 的 Gemini API 金鑰（不經過 Firebase AI Logic）
+                async receiptGenerateDirect(parts, apiKey) {
+                    const body = { contents: [{ role: 'user', parts: parts.map(p => typeof p === 'string' ? { text: p } : { inline_data: { mime_type: p.inlineData.mimeType, data: p.inlineData.data } }) }],
+                                   generationConfig: { responseMimeType: 'application/json' } };
+                    let saved = '';
+                    try { saved = localStorage.getItem('tripApp_receiptModelDirect') || ''; } catch (e) {}
+                    const list = saved && RECEIPT_MODELS.includes(saved) ? [saved, ...RECEIPT_MODELS.filter(x => x !== saved)] : RECEIPT_MODELS;
+                    let lastErr = null;
+                    for (const name of list) {
+                        const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${name}:generateContent`, {
+                            method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey }, body: JSON.stringify(body)
+                        });
+                        const j = await r.json().catch(() => ({}));
+                        if (r.ok) {
+                            try { localStorage.setItem('tripApp_receiptModelDirect', name); } catch (e) {}
+                            const text = ((((j.candidates || [])[0] || {}).content || {}).parts || []).map(x => x.text || '').join('');
+                            return { response: { text: () => text } };
+                        }
+                        const err = new Error(`[${r.status}] ${(j.error && j.error.message) || r.statusText} (${name})`);
+                        err.code = 'gemini-direct/' + ((j.error && j.error.status) || r.status);
+                        lastErr = err;
+                        console.warn('receipt direct', name, err);
+                        if (!(r.status === 404 || this.isModelMissing(err))) throw err;
+                    }
+                    throw lastErr || new Error('MODEL_NONE');
+                },
                 async receiptGenerate(parts) {
+                    const directKey = (this.tripInfo.aiApiKey || '').trim();
+                    if (directKey) return this.receiptGenerateDirect(parts, directKey);
                     const ai = await this.getReceiptAI();
                     let saved = '';
                     try { saved = localStorage.getItem('tripApp_receiptModel') || ''; } catch (e) {}
@@ -5217,7 +5249,7 @@
                     let lastErr = null;
                     for (const name of list) {
                         try {
-                            const model = _aiMod.getGenerativeModel(ai, { model: name, generationConfig: { responseMimeType: 'application/json', temperature: 0.1 } });
+                            const model = _aiMod.getGenerativeModel(ai, { model: name, generationConfig: { responseMimeType: 'application/json' } });
                             const res = await model.generateContent(parts);
                             try { localStorage.setItem('tripApp_receiptModel', name); } catch (e) {}
                             return res;
@@ -5265,7 +5297,7 @@
                     const file = e.target.files && e.target.files[0];
                     e.target.value = '';
                     if (!file) return;
-                    if (!this.sync.config) { alert('收據辨識要用到 Firebase：請先到「設定 → 雲端同步」開啟同步。'); return; }
+                    if (!this.sync.config && !(this.tripInfo.aiApiKey || '').trim()) { alert('收據辨識還沒設定：請到「設定 → 收據辨識（AI）」貼上金鑰。'); return; }
                     const prev = this.receipt;
                     this.receipt = { open: true, phase: 'loading', target, img: '', b64: '', error: '', errorDetail: '', data: null, amount: '', dayIdx: this.activeDay, spotIdx: -1, mode: 'new',
                                      category: '', payer: prev.payer || this.tripInfo.passengerName || '', method: '信用卡', zoom: false };
@@ -5339,6 +5371,9 @@
                     if (m.includes('read_fail')) return '這張照片讀不出來，換一張試試看。';
                     if (m.includes('not_receipt')) return '看起來不像收據 🤔\n請拍清楚整張收據再試一次。';
                     if (m.includes('parse_fail')) return '辨識結果怪怪的，請再拍一次（光線充足、收據攤平）。';
+                    if (m.includes('gemini-direct/') && (m.includes('api_key_invalid') || m.includes('api key not valid'))) return 'Gemini API 金鑰不正確。\n請到「設定 → 收據辨識（AI）」重新貼上金鑰。';
+                    if (m.includes('gemini-direct/') && (m.includes('referer') || m.includes('referrer') || m.includes('permission_denied') || m.includes('403'))) return 'Gemini API 金鑰被拒絕。\n請確認金鑰的「網站限制」有加上 estherlin-23.github.io/*。';
+                    if (/genai[ _-]?config/.test(m)) return 'Firebase 的 AI Logic 設定還沒生效。\n請到 Firebase 主控台 → AI Logic → 設定，確認已選「Gemini Developer API」並啟用；剛設定完的話，等 5～10 分鐘再試。';
                     if (m.includes('app-check') || m.includes('appcheck') || m.includes('recaptcha')) return 'App Check 驗證沒通過。\n請確認「設定 → 收據辨識」的網站金鑰，以及 Firebase App Check 是用 Fraud Defense 註冊、reCAPTCHA 網域有加上你的 github.io 網址。';
                     if (!navigator.onLine || m.includes('failed to fetch') || m.includes('imported module') || m.includes('network')) return '連不上網路，或 AI 元件載入失敗。\n請確認網路後再試。';
                     if (m.includes('429') || m.includes('quota') || m.includes('exhausted')) return '今天的免費額度用完了（或太頻繁），請稍後再試。';
