@@ -115,6 +115,12 @@
         .photo-gallery img { scroll-snap-align: start; flex-shrink: 0; width: 100%; height: 100%; object-fit: cover; }
 
         @keyframes slide-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .rc-label { display:block; font-size:10px; font-weight:700; color:#94A3B8; margin:0 0 4px 2px; }
+        .rc-field { display:flex; align-items:center; width:100%; height:38px; padding:0 10px; border-radius:12px; border:1px solid #E2E8F0; background:#F8FAFC; font-size:12px; font-weight:700; color:#334155; outline:none; -webkit-appearance:none; appearance:none; overflow:hidden; min-width:0; text-overflow:ellipsis; }
+        select.rc-field { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2394A3B8' stroke-width='1.6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 10px center; padding-right:24px; }
+        .rc-time input { -webkit-appearance:none; appearance:none; border:0; background:transparent; width:100%; height:100%; min-height:0; padding:0; margin:0; font:inherit; color:inherit; line-height:38px; outline:none; text-align:left; }
+        .rc-time input::-webkit-date-and-time-value { text-align:left; margin:0; }
+        .rc-pill { height:30px; padding:0 22px 0 10px; border-radius:999px; border:1px solid #E2E8F0; background:#F8FAFC url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M1 1l3 3 3-3' stroke='%2394A3B8' stroke-width='1.4' fill='none'/%3E%3C/svg%3E") no-repeat right 9px center; font-size:11px; font-weight:700; color:#475569; -webkit-appearance:none; appearance:none; outline:none; }
         .animate-slide-up { animation: slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
         @keyframes fade-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in { animation: fade-in 0.3s ease-out forwards; }
@@ -1068,84 +1074,144 @@
                             </div>
                             <!-- 確認 -->
                             <template v-else-if="receipt.phase === 'review' && receipt.data">
-                                <div class="flex gap-3">
-                                    <img v-if="receipt.img" :src="receipt.img" @click="receipt.zoom = !receipt.zoom" class="w-16 h-20 rounded-lg object-cover bg-slate-100 shrink-0 border border-slate-200 cursor-zoom-in">
-                                    <div class="flex-1 min-w-0 space-y-2">
-                                        <input type="text" v-model="receipt.data.storeZh" placeholder="店名" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-[14px] font-bold outline-none focus:border-brand">
-                                        <div class="flex items-center gap-2">
-                                            <input type="date" v-model="receipt.data.date" class="flex-1 min-w-0 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-[12px] font-sans font-bold outline-none">
-                                            <select v-model="receipt.data.currency" class="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-[12px] font-bold outline-none">
-                                                <option value="JPY">JPY ¥</option>
-                                                <option value="TWD">NTD $</option>
-                                            </select>
-                                        </div>
-                                        <p v-if="receipt.data.store && receipt.data.store !== receipt.data.storeZh" class="text-[10px] font-bold text-slate-400 truncate">{{ receipt.data.store }}</p>
+                                <!-- 店家 -->
+                                <div class="flex items-center gap-3">
+                                    <img v-if="receipt.img" :src="receipt.img" @click="receipt.zoom = !receipt.zoom" class="w-12 h-14 rounded-lg object-cover bg-slate-100 shrink-0 border border-slate-200 cursor-zoom-in">
+                                    <div class="flex-1 min-w-0">
+                                        <input type="text" v-model="receipt.data.storeZh" placeholder="店名" class="w-full bg-transparent text-[17px] font-bold text-slate-800 outline-none border-b border-transparent focus:border-slate-200 pb-0.5">
+                                        <p class="text-[11px] font-bold text-slate-400 truncate mt-0.5">
+                                            <span class="font-sans">{{ receipt.data.date || '日期未知' }}</span>
+                                            <span v-if="receipt.data.store && receipt.data.store !== receipt.data.storeZh"> ・{{ receipt.data.store }}</span>
+                                        </p>
                                     </div>
+                                    <select v-model="receipt.data.currency" @change="recalcReceipt" class="rc-pill shrink-0">
+                                        <option value="JPY">¥ JPY</option>
+                                        <option value="TWD">NT$ TWD</option>
+                                    </select>
                                 </div>
                                 <img v-if="receipt.zoom && receipt.img" :src="receipt.img" @click="receipt.zoom = false" class="w-full rounded-xl border border-slate-200">
                                 <p v-if="receipt.data.otherCur" class="text-[11px] font-bold text-[#9E0E26] bg-[#9E0E26]/5 rounded-lg px-3 py-2 leading-relaxed">收據幣別是 {{ receipt.data.otherCur }}，App 目前只能用日幣／台幣記帳，請先換算後修改金額。</p>
 
-                                <div class="rounded-xl border border-slate-200 overflow-hidden">
-                                    <div class="flex items-center px-3 py-2 bg-slate-50 border-b border-slate-200">
-                                        <span class="text-[11px] font-bold text-slate-500 flex-1">品項 <span class="font-sans">{{ receipt.data.items.filter(i => i.on).length }}/{{ receipt.data.items.length }}</span></span>
+                                <!-- 品項 -->
+                                <div class="rounded-2xl border border-slate-200 overflow-hidden bg-white">
+                                    <div class="flex items-center px-3.5 py-2 bg-slate-50/80 border-b border-slate-100">
+                                        <span class="text-[11px] font-bold text-slate-500 flex-1">品項 <span class="font-sans text-slate-400">{{ receipt.data.items.filter(i => i.on).length }}/{{ receipt.data.items.length }}</span></span>
                                         <button type="button" @click.stop="toggleAllReceiptItems" class="text-[11px] font-bold text-[#1A5F8A]">{{ receipt.data.items.every(i => i.on) ? '全不選' : '全選' }}</button>
                                     </div>
-                                    <div v-for="(it, ii) in receipt.data.items" :key="'rci'+ii" class="flex items-start px-3 py-2 border-b border-slate-100 last:border-0" :class="it.on ? '' : 'opacity-45'">
-                                        <button type="button" @click.stop="it.on = !it.on; recalcReceipt()" class="w-5 h-5 mt-1.5 rounded-full border-2 flex items-center justify-center shrink-0 mr-2.5"
-                                                :style="it.on ? { backgroundColor: currentTheme.accent, borderColor: currentTheme.accent, color: currentTheme.onAccent } : { borderColor: '#CBD5E1' }">
-                                            <i v-if="it.on" class="fa-solid fa-check text-[9px]"></i>
-                                        </button>
-                                        <div class="flex-1 min-w-0">
-                                            <input type="text" v-model="it.zh" class="w-full bg-transparent text-[13px] font-bold text-slate-800 outline-none border-b border-transparent focus:border-slate-200 py-1">
-                                            <p v-if="it.name && it.name !== it.zh" class="text-[10px] font-bold text-slate-400 truncate">{{ it.name }}<span v-if="it.qty > 1" class="font-sans"> ×{{ it.qty }}</span></p>
+                                    <div class="divide-y divide-slate-100">
+                                        <div v-for="(it, ii) in receipt.data.items" :key="'rci'+ii" class="flex items-center gap-2.5 px-3.5 py-2" :class="it.on ? '' : 'opacity-40'">
+                                            <button type="button" @click.stop="it.on = !it.on; recalcReceipt()" class="w-[18px] h-[18px] rounded-full border-[1.5px] flex items-center justify-center shrink-0"
+                                                    :style="it.on ? { backgroundColor: currentTheme.accent, borderColor: currentTheme.accent, color: currentTheme.onAccent } : { borderColor: '#CBD5E1' }">
+                                                <i v-if="it.on" class="fa-solid fa-check text-[8px]"></i>
+                                            </button>
+                                            <div class="flex-1 min-w-0">
+                                                <input type="text" v-model="it.zh" placeholder="品名" class="w-full bg-transparent text-[13px] font-bold text-slate-800 outline-none leading-tight">
+                                                <p v-if="(it.name && it.name !== it.zh) || it.qty > 1" class="text-[10px] font-bold text-slate-400 truncate leading-tight mt-0.5">
+                                                    <span v-if="it.name && it.name !== it.zh">{{ it.name }}</span><span v-if="it.qty > 1" class="font-sans"> ×{{ it.qty }}</span>
+                                                </p>
+                                            </div>
+                                            <span v-if="receiptNum(it.price) === 0" class="text-[9px] font-bold text-slate-400 bg-slate-100 rounded px-1.5 py-0.5 shrink-0">贈品</span>
+                                            <div class="flex items-baseline shrink-0">
+                                                <span class="text-[10px] font-bold text-slate-400 mr-0.5 font-sans">{{ curSym(receipt.data.currency) }}</span>
+                                                <input type="text" inputmode="decimal" v-model="it.price" @input="recalcReceipt"
+                                                       class="w-[58px] text-right bg-transparent text-[14px] font-sans font-bold outline-none border-b border-dashed border-slate-200 focus:border-slate-400"
+                                                       :class="receiptNum(it.price) < 0 ? 'text-[#9E0E26]' : 'text-slate-700'">
+                                            </div>
                                         </div>
-                                        <input type="text" inputmode="decimal" v-model="it.price" @input="recalcReceipt" class="w-[78px] ml-2 mt-0.5 text-right bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-[13px] font-sans font-bold outline-none focus:border-brand">
                                     </div>
-                                    <button type="button" @click.stop="receipt.data.items.push({ name: '', zh: '', qty: 1, price: '', on: true })" class="w-full text-[11px] font-bold text-slate-400 py-2 bg-white active:bg-slate-50"><i class="fa-solid fa-plus mr-1"></i>新增品項</button>
+                                    <button type="button" @click.stop="receipt.data.items.push({ name: '', zh: '', qty: 1, price: '', on: true })" class="w-full text-[11px] font-bold text-slate-400 py-2 border-t border-slate-100 active:bg-slate-50"><i class="fa-solid fa-plus mr-1"></i>新增品項</button>
                                 </div>
 
-                                <div class="rounded-xl px-3.5 py-3 flex items-center" :style="{ backgroundColor: currentTheme.soft }">
+                                <!-- 金額 -->
+                                <div class="rounded-2xl px-4 py-3 flex items-center" :style="{ backgroundColor: currentTheme.soft }">
                                     <div class="flex-1 min-w-0">
-                                        <p class="text-[11px] font-bold" :style="{ color: currentTheme.text }">記帳金額</p>
-                                        <p v-if="receipt.data.total" class="text-[10px] font-bold text-slate-400 font-sans">收據總額 {{ curSym(receipt.data.currency) }}{{ formatCurrency(receipt.data.total) }}<span v-if="receipt.data.tax">（含稅 {{ formatCurrency(receipt.data.tax) }}）</span></p>
+                                        <p class="text-[12px] font-bold" :style="{ color: currentTheme.text }">記帳金額</p>
+                                        <p v-if="receipt.data.total" class="text-[10px] font-bold text-slate-400 font-sans">收據總額 {{ curSym(receipt.data.currency) }}{{ formatCurrency(receipt.data.total) }}<span v-if="receipt.data.tax">・含稅 {{ formatCurrency(receipt.data.tax) }}</span></p>
                                     </div>
-                                    <span class="text-[15px] font-bold text-slate-500 font-sans mr-1">{{ curSym(receipt.data.currency) }}</span>
-                                    <input type="text" inputmode="decimal" v-model="receipt.amount" class="w-[110px] text-right bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-[18px] font-sans font-bold outline-none" :style="{ color: currentTheme.vivid }">
+                                    <span class="text-[14px] font-bold text-slate-400 font-sans mr-1.5">{{ curSym(receipt.data.currency) }}</span>
+                                    <input type="text" inputmode="decimal" v-model="receipt.amount" class="w-[100px] text-right bg-white/80 rounded-lg px-2.5 py-1 text-[20px] font-sans font-bold outline-none" :style="{ color: currentTheme.vivid }">
                                 </div>
 
-                                <div v-if="receipt.target !== 'form'" class="space-y-2.5">
+                                <!-- 存到哪裡 -->
+                                <div v-if="receipt.target !== 'form'" class="space-y-3">
                                     <div class="grid grid-cols-2 gap-1 p-1 rounded-xl bg-slate-100">
-                                        <button type="button" @click.stop="receipt.mode = 'new'" class="py-2 rounded-lg text-[12px] font-bold" :class="receipt.mode === 'new' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500'"><i class="fa-solid fa-plus mr-1"></i>新增一張卡片</button>
-                                        <button type="button" @click.stop="receipt.mode = 'existing'" class="py-2 rounded-lg text-[12px] font-bold" :class="receipt.mode === 'existing' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500'"><i class="fa-solid fa-link mr-1"></i>加到現有行程</button>
+                                        <button type="button" @click.stop="receipt.mode = 'new'" class="py-2 rounded-lg text-[12px] font-bold transition-colors" :class="receipt.mode === 'new' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500'"><i class="fa-solid fa-plus mr-1"></i>新增一張卡片</button>
+                                        <button type="button" @click.stop="receipt.mode = 'existing'" class="py-2 rounded-lg text-[12px] font-bold transition-colors" :class="receipt.mode === 'existing' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500'"><i class="fa-solid fa-link mr-1"></i>加到現有行程</button>
                                     </div>
-                                    <div class="flex gap-2">
-                                        <select v-model.number="receipt.dayIdx" @change="receipt.spotIdx = -1" class="w-full min-w-0 bg-white border border-slate-200 rounded-xl px-3 py-2 text-[12px] font-bold outline-none focus:border-brand h-[36px] w-[42%] shrink-0">
-                                            <option v-for="(d, di) in itinerary" :key="'rd'+di" :value="di">{{ d.label }}・{{ d.shortDate }}</option>
-                                        </select>
-                                        <select v-if="receipt.mode === 'existing'" v-model.number="receipt.spotIdx" class="w-full min-w-0 bg-white border border-slate-200 rounded-xl px-3 py-2 text-[12px] font-bold outline-none focus:border-brand h-[36px]">
-                                            <option :value="-1" disabled>選擇行程…</option>
-                                            <option v-for="(sp, si) in (itinerary[receipt.dayIdx] ? itinerary[receipt.dayIdx].spots : [])" :key="'rs'+si" :value="si">{{ sp.startTime ? sp.startTime + ' ' : '' }}{{ sp.name || '未命名' }}</option>
-                                        </select>
-                                        <input v-else type="time" v-model="receipt.data.time" class="w-full min-w-0 bg-white border border-slate-200 rounded-xl px-3 py-2 text-[12px] font-bold outline-none focus:border-brand h-[36px] font-sans">
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <label class="block min-w-0">
+                                            <span class="rc-label">日期</span>
+                                            <select v-model.number="receipt.dayIdx" @change="receipt.spotIdx = -1" class="rc-field">
+                                                <option v-for="(d, di) in itinerary" :key="'rd'+di" :value="di">{{ d.label }}・{{ d.shortDate }}</option>
+                                            </select>
+                                        </label>
+                                        <label v-if="receipt.mode === 'new'" class="block min-w-0">
+                                            <span class="rc-label">時間</span>
+                                            <div class="rc-field rc-time"><input type="time" v-model="receipt.data.time"></div>
+                                        </label>
+                                        <label v-else class="block min-w-0">
+                                            <span class="rc-label">行程</span>
+                                            <select v-model.number="receipt.spotIdx" class="rc-field">
+                                                <option :value="-1" disabled>選擇行程…</option>
+                                                <option v-for="(sp, si) in (itinerary[receipt.dayIdx] ? itinerary[receipt.dayIdx].spots : [])" :key="'rs'+si" :value="si">{{ sp.startTime ? sp.startTime + ' ' : '' }}{{ sp.name || '未命名' }}</option>
+                                            </select>
+                                        </label>
                                     </div>
                                     <div class="grid grid-cols-3 gap-2">
-                                        <select v-model="receipt.category" class="w-full min-w-0 bg-white border border-slate-200 rounded-xl px-3 py-2 text-[12px] font-bold outline-none focus:border-brand h-[36px] px-2">
-                                            <option value="">未分類</option>
-                                            <option v-for="c in costCategoryList" :key="'rcc'+c.name" :value="c.name">{{ c.emoji }} {{ c.name }}</option>
-                                        </select>
-                                        <select v-model="receipt.payer" class="w-full min-w-0 bg-white border border-slate-200 rounded-xl px-3 py-2 text-[12px] font-bold outline-none focus:border-brand h-[36px] px-2">
-                                            <option value="">付款人</option>
-                                            <option v-for="p in customPayers" :key="'rp'+p" :value="p">{{ p }}</option>
-                                        </select>
-                                        <select v-model="receipt.method" class="w-full min-w-0 bg-white border border-slate-200 rounded-xl px-3 py-2 text-[12px] font-bold outline-none focus:border-brand h-[36px] px-2">
-                                            <option value="現金">💵 現金</option>
-                                            <option value="信用卡">💳 信用卡</option>
-                                            <option value="簽帳金融卡">💳 簽帳卡</option>
-                                            <option value="西瓜卡/交通卡">🪪 交通卡</option>
-                                            <option v-for="m in customPaymentMethods" :key="'rm'+m" :value="m">💳 {{ m }}</option>
-                                        </select>
+                                        <label class="block min-w-0">
+                                            <span class="rc-label">類別</span>
+                                            <select v-model="receipt.category" class="rc-field">
+                                                <option value="">未分類</option>
+                                                <option v-for="c in costCategoryList" :key="'rcc'+c.name" :value="c.name">{{ c.emoji }} {{ c.name }}</option>
+                                            </select>
+                                        </label>
+                                        <label class="block min-w-0">
+                                            <span class="rc-label">付款人</span>
+                                            <select v-model="receipt.payer" @change="onReceiptPayerChange" class="rc-field">
+                                                <option value="">未設定</option>
+                                                <option v-for="p in peopleList" :key="'rp'+p" :value="p">{{ p }}</option>
+                                            </select>
+                                        </label>
+                                        <label class="block min-w-0">
+                                            <span class="rc-label">付款方式</span>
+                                            <select v-model="receipt.method" class="rc-field">
+                                                <option value="現金">💵 現金</option>
+                                                <option value="信用卡">💳 信用卡</option>
+                                                <option value="簽帳金融卡">💳 簽帳卡</option>
+                                                <option value="西瓜卡/交通卡">🪪 交通卡</option>
+                                                <option v-for="m in customPaymentMethods" :key="'rm'+m" :value="m">💳 {{ m }}</option>
+                                            </select>
+                                        </label>
                                     </div>
                                     <p v-if="receipt.mode === 'existing'" class="text-[10px] font-bold text-slate-400 leading-relaxed px-1">金額會加到那個行程原本的花費上；清單裡名稱對得上的「必買」也會自動打勾。</p>
+                                    <p v-else-if="receipt.data.address" class="text-[10px] font-bold text-slate-400 leading-relaxed px-1 truncate"><i class="fa-solid fa-location-dot mr-1"></i>{{ receipt.data.address }}</p>
+                                </div>
+
+                                <!-- 分帳 -->
+                                <div class="rounded-2xl border border-slate-200 px-3.5 py-3">
+                                    <div class="flex items-center">
+                                        <span class="w-7 h-7 rounded-lg bg-[#EAF3F9] text-[#1E4E79] flex items-center justify-center mr-2.5 shrink-0"><i class="fa-solid fa-hand-holding-dollar text-[11px]"></i></span>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-[13px] font-bold text-slate-800 leading-tight">分帳</p>
+                                            <p class="text-[10px] font-bold text-slate-400 truncate">{{ receiptPayer ? receiptPayer + ' 先付，其他人平分' : '先選付款人才能分帳' }}</p>
+                                        </div>
+                                        <button type="button" @click.stop="toggleReceiptSplit" class="relative inline-flex w-10 h-6 rounded-full transition-colors shrink-0" :style="{ backgroundColor: receipt.split ? currentTheme.accent : '#E2E8F0' }">
+                                            <span class="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform" :class="receipt.split ? 'translate-x-4' : ''"></span>
+                                        </button>
+                                    </div>
+                                    <div v-if="receipt.split && receiptPayer" class="mt-3">
+                                        <div class="flex flex-wrap gap-1.5">
+                                            <button type="button" v-for="p in peopleList.filter(x => x !== receiptPayer)" :key="'rsp'+p" @click.stop="toggleReceiptSplitPerson(p)"
+                                                    class="text-[11px] font-bold px-2.5 py-1.5 rounded-full border transition-colors"
+                                                    :style="receipt.splitWith.includes(p) ? { backgroundColor: currentTheme.soft, borderColor: currentTheme.accent, color: currentTheme.text } : { borderColor: '#E2E8F0', color: '#94A3B8' }">
+                                                <i class="fa-solid mr-1" :class="receipt.splitWith.includes(p) ? 'fa-check' : 'fa-plus'"></i>{{ p }}
+                                            </button>
+                                        </div>
+                                        <p v-if="receipt.splitWith.length" class="text-[11px] font-bold text-slate-500 mt-2.5">
+                                            共 {{ receipt.splitWith.length + 1 }} 人平分，每人 <span class="font-sans" :style="{ color: currentTheme.vivid }">{{ curSym(receipt.data.currency) }}{{ formatCurrency(receiptShare) }}</span>，
+                                            {{ receipt.splitWith.join('、') }} 要還 {{ receiptPayer }}
+                                        </p>
+                                    </div>
                                 </div>
                             </template>
                         </div>
@@ -2143,7 +2209,7 @@
                                     <input type="text" v-model.trim="tripInfo.aiApiKey" placeholder="AIza…（有填就直接用這把，不經過 AI Logic）" autocomplete="off" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2 text-[12px] font-sans outline-none">
                                     <p v-if="!sync.enabled && !tripInfo.aiApiKey" class="text-[11px] font-bold text-[#9E0E26] mt-2">要先開啟上面的「雲端同步」，或填入 Gemini API 金鑰</p>
                                     <p v-else class="text-[10px] font-bold text-slate-400 mt-2">金鑰會同步給旅伴，旅伴不用再設定。</p>
-                                    <p class="text-[10px] font-bold text-slate-300 mt-1 font-sans">App 版本 36</p>
+                                    <p class="text-[10px] font-bold text-slate-300 mt-1 font-sans">App 版本 37</p>
                                 </div>
                             </div>
 
@@ -2822,7 +2888,7 @@
                     },
                     saveTimeout: null, isStateLoaded: false,
                     sortableInstances: {},
-                    isDraggingSpot: false, justDraggedSpot: false, receipt: { open: false, phase: '', target: 'new', img: '', b64: '', error: '', errorDetail: '', data: null, amount: '', dayIdx: 0, spotIdx: -1, mode: 'new', category: '', payer: '', method: '信用卡', zoom: false }, swipe: { id: null, open: null, offset: 0, active: false }, undoDelete: null, justSwiped: false,
+                    isDraggingSpot: false, justDraggedSpot: false, receipt: { open: false, phase: '', target: 'new', img: '', b64: '', error: '', errorDetail: '', split: false, splitWith: [], data: null, amount: '', dayIdx: 0, spotIdx: -1, mode: 'new', category: '', payer: '', method: '信用卡', zoom: false }, swipe: { id: null, open: null, offset: 0, active: false }, undoDelete: null, justSwiped: false,
                     showExpenseDetail: false, expenseDetailKey: '',
                     showSwapModal: false, toastMsg: '', showSettleDetail: false, airlineGroups: AIRLINE_GROUPS, photoDrag: { obj: null },
                     sync: { enabled: false, config: null, code: '', status: 'off', lastAt: 0, error: '', deviceId: '', joining: false }, syncConfigText: '', syncInviteText: '', isApplyingRemote: false,
@@ -2923,6 +2989,16 @@
                     return (map[t] || []).map(([kind, text]) => ({ kind, text, brand: '' }));
                 },
                 // 同行者名單：旅客本人＋自訂付款人＋行程裡出現過的付款人
+                receiptPayer() {
+                    const R = this.receipt;
+                    if (R.target === 'form') return (this.selectedSpot && this.selectedSpot.payer && this.selectedSpot.payer !== '自訂') ? this.selectedSpot.payer : '';
+                    return R.payer || '';
+                },
+                receiptShare() {
+                    const n = (this.receipt.splitWith || []).length + 1;
+                    const v = this.receiptNum(this.receipt.amount) / n;
+                    return this.receipt.data && this.receipt.data.currency === 'JPY' ? Math.round(v) : Math.round(v * 100) / 100;
+                },
                 peopleList() {
                     const set = [];
                     const add = (n) => { n = (n || '').trim(); if (n && n !== '自訂' && !set.includes(n)) set.push(n); };
@@ -5208,6 +5284,10 @@
                     _aiSig = sig;
                     return _aiInst;
                 },
+                isModelBusy(err) {
+                    const m = String((err && (err.code || '')) + ' ' + (err && err.message || '')).toLowerCase();
+                    return /\b503\b|\b429\b|unavailable|high demand|overloaded|resource[ _-]?exhausted|try again later/.test(m);
+                },
                 isModelMissing(err) {
                     const m = String((err && (err.code || '')) + ' ' + (err && err.message || '')).toLowerCase();
                     if (/genai[ _-]?config|config[ _-]?not[ _-]?found|app[ _-]?check|permission|api key/.test(m)) return false;   // 設定問題，不是模型問題
@@ -5235,7 +5315,7 @@
                         err.code = 'gemini-direct/' + ((j.error && j.error.status) || r.status);
                         lastErr = err;
                         console.warn('receipt direct', name, err);
-                        if (!(r.status === 404 || this.isModelMissing(err))) throw err;
+                        if (!(r.status === 404 || r.status === 503 || r.status === 429 || r.status === 500 || this.isModelMissing(err) || this.isModelBusy(err))) throw err;
                     }
                     throw lastErr || new Error('MODEL_NONE');
                 },
@@ -5256,7 +5336,7 @@
                         } catch (err) {
                             console.warn('receipt model', name, err);
                             lastErr = err;
-                            if (!this.isModelMissing(err)) throw err;
+                            if (!this.isModelMissing(err) && !this.isModelBusy(err)) throw err;
                         }
                     }
                     throw lastErr || new Error('MODEL_NONE');
@@ -5284,7 +5364,7 @@
                 receiptPrompt() {
                     const cats = this.costCategoryList.map(c => c.name).join('、');
                     return `你是收據辨識助手。照片是一張購物或餐廳收據，可能是日文、英文、中文或韓文。請只回傳 JSON（不要其他文字），格式：
-{"store":"收據上的原始店名","storeZh":"繁體中文店名（品牌名可保留原文，例如 7-Eleven、唐吉訶德、松本清）","date":"YYYY-MM-DD 或空字串","time":"HH:MM（24 小時制）或空字串","currency":"ISO 幣別代碼，例如 JPY、TWD、KRW、USD","items":[{"name":"原文品名","zh":"簡短口語的繁體中文品名","qty":數量,"price":該行實付金額}],"tax":稅額或null,"total":收據上的應付總額,"payment":"現金、信用卡、交通卡 或空字串","category":"從這些類別挑一個最適合的：${cats}"}
+{"store":"收據上的原始店名","address":"收據上印的店家地址（照原文），沒有就空字串","storeZh":"繁體中文店名（品牌名可保留原文，例如 7-Eleven、唐吉訶德、松本清）","date":"YYYY-MM-DD 或空字串","time":"HH:MM（24 小時制）或空字串","currency":"ISO 幣別代碼，例如 JPY、TWD、KRW、USD","items":[{"name":"原文品名","zh":"簡短口語的繁體中文品名","qty":數量,"price":該行實付金額}],"tax":稅額或null,"total":收據上的應付總額,"payment":"現金、信用卡、交通卡 或空字串","category":"從這些類別挑一個最適合的：${cats}"}
 規則：
 - 數字一律用純數字，不要貨幣符號或千分位逗號。
 - price 是那一行的金額（數量×單價）；折扣、優惠券用負數單獨一行。
@@ -5299,7 +5379,7 @@
                     if (!file) return;
                     if (!this.sync.config && !(this.tripInfo.aiApiKey || '').trim()) { alert('收據辨識還沒設定：請到「設定 → 收據辨識（AI）」貼上金鑰。'); return; }
                     const prev = this.receipt;
-                    this.receipt = { open: true, phase: 'loading', target, img: '', b64: '', error: '', errorDetail: '', data: null, amount: '', dayIdx: this.activeDay, spotIdx: -1, mode: 'new',
+                    this.receipt = { open: true, phase: 'loading', target, img: '', b64: '', error: '', errorDetail: '', split: false, splitWith: [], data: null, amount: '', dayIdx: this.activeDay, spotIdx: -1, mode: 'new',
                                      category: '', payer: prev.payer || this.tripInfo.passengerName || '', method: '信用卡', zoom: false };
                     try {
                         const { url, b64 } = await this.receiptCompress(file);
@@ -5342,7 +5422,7 @@
                     })).filter(it => it.zh || it.name || this.receiptNum(it.price));
                     const pay = String(raw.payment || '');
                     return {
-                        store: String(raw.store || '').trim(), storeZh: String(raw.storeZh || raw.store || '').trim(),
+                        store: String(raw.store || '').trim(), address: String(raw.address || '').trim(), storeZh: String(raw.storeZh || raw.store || '').trim(),
                         date: /^\d{4}-\d{2}-\d{2}$/.test(raw.date || '') ? raw.date : '', time: /^\d{1,2}:\d{2}$/.test(raw.time || '') ? raw.time.padStart(5, '0') : '',
                         currency: known ? cur : 'JPY', otherCur: known ? '' : cur,
                         tax: this.receiptNum(raw.tax) || 0, total: this.receiptNum(raw.total) || 0,
@@ -5376,6 +5456,7 @@
                     if (/genai[ _-]?config/.test(m)) return 'Firebase 的 AI Logic 設定還沒生效。\n請到 Firebase 主控台 → AI Logic → 設定，確認已選「Gemini Developer API」並啟用；剛設定完的話，等 5～10 分鐘再試。';
                     if (m.includes('app-check') || m.includes('appcheck') || m.includes('recaptcha')) return 'App Check 驗證沒通過。\n請確認「設定 → 收據辨識」的網站金鑰，以及 Firebase App Check 是用 Fraud Defense 註冊、reCAPTCHA 網域有加上你的 github.io 網址。';
                     if (!navigator.onLine || m.includes('failed to fetch') || m.includes('imported module') || m.includes('network')) return '連不上網路，或 AI 元件載入失敗。\n請確認網路後再試。';
+                    if (m.includes('503') || m.includes('high demand') || m.includes('overloaded') || m.includes('unavailable')) return 'Google 的 AI 現在太忙了（所有模型都滿載）。\n等 1～2 分鐘再試一次就好。';
                     if (m.includes('429') || m.includes('quota') || m.includes('exhausted')) return '今天的免費額度用完了（或太頻繁），請稍後再試。';
                     if (m.includes('403') || m.includes('permission') || m.includes('not enabled') || m.includes('disabled') || m.includes('api-not-enabled')) return 'Firebase 的 AI Logic 還沒開啟。\n請到 Firebase 主控台 → AI Logic → 開始使用，選 Gemini Developer API。';
                     if (m.includes('404') || m.includes('not found')) return '目前可用的 AI 模型都找不到。\n請確認 Firebase「AI Logic」已完成設定（選 Gemini Developer API）。';
@@ -5389,15 +5470,48 @@
                     if (/門票|活動|景點/.test(cat || '')) return 'spot';
                     return 'shopping';
                 },
-                addReceiptToSpot(spot, rec, amount) {
+                convertAmt(v, from, to) {
+                    v = Number(v) || 0;
+                    if (!from || !to || from === to) return v;
+                    const r = this.exchangeRateJPYtoTWD || 1;
+                    if (from === 'JPY' && to === 'TWD') return v * r;
+                    if (from === 'TWD' && to === 'JPY') return v / r;
+                    return v;
+                },
+                roundCur(v, cur) { return cur === 'JPY' ? Math.round(v) : Math.round(v * 100) / 100; },
+                onReceiptPayerChange() {
+                    this.receipt.splitWith = this.receipt.splitWith.filter(p => p !== this.receipt.payer);
+                },
+                toggleReceiptSplit() {
+                    const R = this.receipt;
+                    if (!this.receiptPayer) { alert(R.target === 'form' ? '請先在行程的「付款人」選好是誰付的' : '請先選「付款人」'); return; }
+                    R.split = !R.split;
+                    if (R.split && !R.splitWith.length) R.splitWith = this.peopleList.filter(p => p !== this.receiptPayer);
+                },
+                toggleReceiptSplitPerson(p) {
+                    const L = this.receipt.splitWith;
+                    this.receipt.splitWith = L.includes(p) ? L.filter(x => x !== p) : [...L, p];
+                },
+                // 把收據加到某個行程：金額加上去、記下明細、（可選）分帳、清單自動打勾
+                addReceiptToSpot(spot, rec, amount, split) {
                     const cur = rec.currency;
                     const old = this.receiptNum(spot.cost);
                     if (!old) { spot.cost = amount; spot.currency = cur; }
-                    else {
-                        const sc = spot.currency || 'TWD';
-                        let add = amount;
-                        if (sc !== cur) add = cur === 'JPY' ? amount * this.exchangeRateJPYtoTWD : amount / (this.exchangeRateJPYtoTWD || 1);
-                        spot.cost = Math.round((old + add) * 100) / 100;
+                    else spot.cost = this.roundCur(old + this.convertAmt(amount, cur, spot.currency || 'TWD'), spot.currency || 'TWD');
+                    rec.spotCur = spot.currency;
+                    rec.added = this.roundCur(this.convertAmt(amount, cur, spot.currency), spot.currency);
+                    // 分帳：每人應付的金額（換成這個行程的幣別）加到墊付紀錄
+                    if (split && split.people.length) {
+                        if (!Array.isArray(spot.advances)) spot.advances = [];
+                        const share = this.roundCur(this.convertAmt(split.share, cur, spot.currency), spot.currency);
+                        rec.split = split.people.map(p => ({ person: p, amount: share }));
+                        split.people.forEach(p => {
+                            const a = spot.advances.find(x => x.person === p);
+                            if (a) a.amount = String(this.roundCur(this.receiptNum(a.amount) + share, spot.currency));
+                            else spot.advances.push({ person: p, amount: String(share) });
+                        });
+                        spot.isAdvance = true;
+                        if (!spot.payer) spot.payer = split.payer;
                     }
                     if (!Array.isArray(spot.receipts)) spot.receipts = [];
                     spot.receipts.push(rec);
@@ -5416,43 +5530,66 @@
                     const R = this.receipt, d = R.data; if (!d) return;
                     const amount = Math.round(this.receiptNum(R.amount) * 100) / 100;
                     if (!amount) { alert('記帳金額是 0，請確認一下'); return; }
-                    const rec = { id: 'r' + Date.now().toString(36), store: d.store, storeZh: d.storeZh, date: d.date, currency: d.currency, total: amount,
+                    const rec = { id: 'r' + Date.now().toString(36), store: d.store, storeZh: d.storeZh, address: d.address || '', date: d.date, currency: d.currency, total: amount,
                                   items: d.items.filter(i => i.on && (i.zh || i.name)).map(i => ({ name: i.name, zh: i.zh, qty: i.qty, price: this.receiptNum(i.price) })) };
+                    const split = R.split && this.receiptPayer && R.splitWith.length ? { payer: this.receiptPayer, people: R.splitWith.slice(), share: this.receiptShare } : null;
                     let msg = '';
                     if (R.target === 'form') {
                         const sp = this.selectedSpot;
-                        const hit = this.addReceiptToSpot(sp, rec, amount);
+                        const hit = this.addReceiptToSpot(sp, rec, amount, split);
                         if (!sp.costCategory && R.category) sp.costCategory = R.category;
                         if (d.payment && !sp.paymentMethod) sp.paymentMethod = d.payment;
-                        msg = '已帶入收據金額' + (hit ? `，清單打勾 ${hit} 項` : '') + '（記得按儲存）';
+                        msg = '已帶入收據金額' + (split ? '和分帳' : '') + (hit ? `，清單打勾 ${hit} 項` : '') + '（記得按儲存）';
                     } else {
                         const day = this.itinerary[R.dayIdx];
                         if (!day) { alert('找不到這一天'); return; }
                         if (R.mode === 'existing') {
                             const sp = day.spots[R.spotIdx];
                             if (!sp) { alert('請先選擇要加到哪個行程'); return; }
-                            const hit = this.addReceiptToSpot(sp, rec, amount);
-                            if (!sp.costCategory && R.category) sp.costCategory = R.category;
                             if (!sp.payer && R.payer) sp.payer = R.payer;
+                            const hit = this.addReceiptToSpot(sp, rec, amount, split);
+                            if (!sp.costCategory && R.category) sp.costCategory = R.category;
                             if (!sp.paymentMethod && R.method) sp.paymentMethod = R.method;
                             msg = `已加到「${sp.name || '行程'}」` + (hit ? `，清單打勾 ${hit} 項` : '');
                         } else {
+                            // 新卡片：地點用收據上的地址（之後可以在編輯頁修改）
+                            const addr = d.address || '';
+                            const mapQuery = [d.store || d.storeZh, addr].filter(Boolean).join(' ');
                             const spot = { id: this.makeSpotId(), type: this.receiptSpotType(R.category), name: d.storeZh || d.store || '購物', startTime: d.time || '', endTime: '', durationH: '', durationM: '',
-                                           desc: '', location: d.store && d.store !== d.storeZh ? d.store : '', googleMapUrl: '', hours: '', warning: '',
-                                           cost: amount, currency: d.currency, costCategory: R.category || '', payer: R.payer || '', paymentMethod: R.method || '信用卡', lat: null, lng: null,
+                                           desc: '', location: addr || (d.store && d.store !== d.storeZh ? d.store : ''),
+                                           googleMapUrl: addr ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(mapQuery) : '',
+                                           hours: '', warning: '',
+                                           cost: '', currency: d.currency, costCategory: R.category || '', payer: R.payer || '', paymentMethod: R.method || '信用卡', lat: null, lng: null,
                                            photoSpotDesc: '', coverImage: '', coverPosition: 50, tags: [], checklist: [], links: [], images: [], files: [], legs: [], seats: [],
-                                           phone: '', transport: '', bookingRef: '', receipts: [rec] };
+                                           phone: '', transport: '', bookingRef: '', receipts: [], advances: [], isAdvance: false };
+                            this.addReceiptToSpot(spot, rec, amount, split);
                             day.spots.push(spot);
                             if (!day.customSorted) day.spots.sort((a, b) => (a.startTime || a.checkInTime || '23:59').localeCompare(b.startTime || b.checkInTime || '23:59'));
-                            msg = `已新增到 ${day.label}`;
+                            msg = `已新增到 ${day.label}` + (split ? '（含分帳）' : '');
                         }
                     }
                     this.closeReceipt();
                     this.showToast(msg);
                 },
+                // 移除收據：一併扣掉它加上去的金額和分帳
                 removeReceipt(ri) {
                     const sp = this.selectedSpot; if (!sp || !Array.isArray(sp.receipts)) return;
-                    if (!confirm('移除這張收據明細？（花費金額不會自動扣掉，需要的話請手動修改）')) return;
+                    const r = sp.receipts[ri]; if (!r) return;
+                    const cur = sp.currency || 'TWD';
+                    const minus = r.added != null && r.spotCur === cur ? Number(r.added) : this.roundCur(this.convertAmt(r.total, r.currency, cur), cur);
+                    if (!confirm(`移除「${r.storeZh || r.store || '這張收據'}」？\n花費會一併扣掉 ${this.curSym(cur)}${this.formatCurrency(minus)}` + (r.split && r.split.length ? '，分帳也會一起扣掉' : '') + '。')) return;
+                    sp.cost = Math.max(0, this.roundCur(this.receiptNum(sp.cost) - minus, cur));
+                    if (!sp.cost) sp.cost = '';
+                    if (Array.isArray(r.split) && Array.isArray(sp.advances)) {
+                        r.split.forEach(x => {
+                            const a = sp.advances.find(y => y.person === x.person);
+                            if (!a) return;
+                            const left = this.roundCur(this.receiptNum(a.amount) - Number(x.amount || 0), cur);
+                            if (left > 0) a.amount = String(left);
+                            else sp.advances = sp.advances.filter(y => y !== a);
+                        });
+                        if (!sp.advances.length) sp.isAdvance = false;
+                    }
                     sp.receipts.splice(ri, 1);
                 },
                 // --- 行程卡片：左滑刪除 ---
