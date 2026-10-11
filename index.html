@@ -500,7 +500,7 @@
                                                         <span v-if="checklistTotal(spot)" class="font-sans">約 ¥{{ checklistTotal(spot).toLocaleString() }}</span>
                                                     </div>
                                                     <div v-for="(it, ci) in sortedChecklist(spot).filter(x => !x.done).slice(0, 4)" :key="'cc'+ci+(it.text||'')" @click.stop="it.done = !it.done" class="flex items-center py-[4px] cursor-pointer">
-                                                        <span class="w-4 h-4 rounded-full border-[1.5px] flex items-center justify-center shrink-0 mr-2 transition-colors" :style="it.done ? { backgroundColor: kindColor(it.kind), borderColor: kindColor(it.kind) } : { borderColor: '#CBD5E1', backgroundColor: '#fff' }">
+                                                        <span class="w-4 h-4 rounded-[5px] border-[1.5px] flex items-center justify-center shrink-0 mr-2 transition-colors" :style="it.done ? { backgroundColor: kindColor(it.kind), borderColor: kindColor(it.kind) } : { borderColor: '#CBD5E1', backgroundColor: '#fff' }">
                                                             <i v-if="it.done" class="fa-solid fa-check text-white text-[7px]"></i>
                                                         </span>
                                                         <span class="text-[9px] font-bold px-1 py-[2px] rounded mr-1.5 shrink-0 leading-none" :style="kindChipStyle(it.kind)">{{ it.kind }}</span>
@@ -596,7 +596,7 @@
                                         <div class="bg-white mx-1.5 mb-1.5 rounded-lg px-3">
                                             <div :id="'todo-items-list-' + cIdx + '-' + sIdx">
                                                 <div v-for="(item, iIdx) in sub.items" :key="item.id" v-show="!(hideDoneTodos && item.done)" class="todo-item flex items-center py-2.5 border-b border-slate-100">
-                                                    <button type="button" @click="item.done = !item.done" class="w-[20px] h-[20px] rounded-full border-[1.5px] flex items-center justify-center shrink-0 mr-3 transition-all duration-200"
+                                                    <button type="button" @click="item.done = !item.done" class="w-[20px] h-[20px] rounded-[5px] border-[1.5px] flex items-center justify-center shrink-0 mr-3 transition-all duration-200"
                                                             :style="item.done ? { backgroundColor: currentTheme.accent, borderColor: currentTheme.accent } : { borderColor: '#CBD5E1', backgroundColor: '#fff' }">
                                                         <i v-if="item.done" class="fa-solid fa-check text-[9px]" :style="{ color: currentTheme.onAccent }"></i>
                                                     </button>
@@ -607,7 +607,7 @@
                                             </div>
                                             <!-- 新增項目 -->
                                             <div class="flex items-center py-2.5">
-                                                <span class="w-[20px] h-[20px] rounded-full border-[1.5px] border-dashed flex items-center justify-center shrink-0 mr-3" :style="{ borderColor: currentTheme.line, color: currentTheme.accent2 }"><i class="fa-solid fa-plus text-[8px]"></i></span>
+                                                <span class="w-[20px] h-[20px] rounded-[5px] border-[1.5px] border-dashed flex items-center justify-center shrink-0 mr-3" :style="{ borderColor: currentTheme.line, color: currentTheme.accent2 }"><i class="fa-solid fa-plus text-[8px]"></i></span>
                                                 <input type="text" v-model="sub.newItemText" @keyup.enter="addTodoItem(cIdx, sIdx)" placeholder="新增項目" class="flex-1 min-w-0 bg-transparent text-[14px] outline-none placeholder:text-slate-300 text-slate-700">
                                                 <button v-if="sub.newItemText && sub.newItemText.trim()" type="button" @click.stop="addTodoItem(cIdx, sIdx)" class="text-[11px] font-bold text-white px-2.5 py-1 rounded-full shrink-0 active:scale-95" :style="{ backgroundColor: currentTheme.accent, color: currentTheme.onAccent }">加入</button>
                                             </div>
@@ -1050,7 +1050,7 @@
                             <span class="w-8 h-8 rounded-lg bg-[#EAF3F9] text-[#1E4E79] flex items-center justify-center mr-2.5 shrink-0"><i class="fa-solid fa-receipt text-[13px]"></i></span>
                             <div class="flex-1 min-w-0">
                                 <p class="text-[15px] font-bold text-slate-800 leading-tight">收據辨識</p>
-                                <p class="text-[10px] font-bold text-slate-400">{{ receipt.phase === 'review' ? '確認一下品項和金額，可以直接修改' : 'AI 會讀出品項、價格和總額' }}</p>
+                                <p class="text-[10px] font-bold text-slate-400">{{ receipt.phase === 'review' ? '確認一下品項和金額，可以直接修改' : 'AI 會讀出品項、價格和總額' }}<span class="text-slate-300 font-sans ml-1">v38</span></p>
                             </div>
                             <button type="button" @click.stop="closeReceipt" class="w-8 h-8 bg-slate-100 rounded-full text-slate-500 flex justify-center items-center shrink-0"><i class="fa-solid fa-xmark text-sm"></i></button>
                         </div>
@@ -1100,15 +1100,19 @@
                                     </div>
                                     <div class="divide-y divide-slate-100">
                                         <div v-for="(it, ii) in receipt.data.items" :key="'rci'+ii" class="flex items-center gap-2.5 px-3.5 py-2" :class="it.on ? '' : 'opacity-40'">
-                                            <button type="button" @click.stop="it.on = !it.on; recalcReceipt()" class="w-[18px] h-[18px] rounded-full border-[1.5px] flex items-center justify-center shrink-0"
+                                            <button type="button" @click.stop="it.on = !it.on; recalcReceipt()" class="w-[18px] h-[18px] rounded-[5px] border-[1.5px] flex items-center justify-center shrink-0"
                                                     :style="it.on ? { backgroundColor: currentTheme.accent, borderColor: currentTheme.accent, color: currentTheme.onAccent } : { borderColor: '#CBD5E1' }">
                                                 <i v-if="it.on" class="fa-solid fa-check text-[8px]"></i>
                                             </button>
                                             <div class="flex-1 min-w-0">
-                                                <input type="text" v-model="it.zh" placeholder="品名" class="w-full bg-transparent text-[13px] font-bold text-slate-800 outline-none leading-tight">
-                                                <p v-if="(it.name && it.name !== it.zh) || it.qty > 1" class="text-[10px] font-bold text-slate-400 truncate leading-tight mt-0.5">
-                                                    <span v-if="it.name && it.name !== it.zh">{{ it.name }}</span><span v-if="it.qty > 1" class="font-sans"> ×{{ it.qty }}</span>
-                                                </p>
+                                                <div class="flex items-center gap-1">
+                                                    <input type="text" v-model="it.zh" @input="it.unsure = false" placeholder="品名" class="flex-1 min-w-0 bg-transparent text-[13px] font-bold text-slate-800 outline-none leading-tight border-b border-transparent focus:border-slate-200">
+                                                    <span v-if="it.unsure" class="text-[9px] font-bold text-[#B45309] bg-[#FEF3C7] rounded px-1 py-[1px] shrink-0">待確認</span>
+                                                </div>
+                                                <div class="flex items-center gap-1 mt-0.5">
+                                                    <input type="text" v-model="it.name" placeholder="原文（選填）" class="flex-1 min-w-0 bg-transparent text-[10px] font-bold text-slate-400 outline-none leading-tight border-b border-transparent focus:border-slate-200">
+                                                    <span v-if="it.qty > 1" class="text-[10px] font-bold text-slate-400 font-sans shrink-0">×{{ it.qty }}</span>
+                                                </div>
                                             </div>
                                             <span v-if="receiptNum(it.price) === 0" class="text-[9px] font-bold text-slate-400 bg-slate-100 rounded px-1.5 py-0.5 shrink-0">贈品</span>
                                             <div class="flex items-baseline shrink-0">
@@ -1207,10 +1211,26 @@
                                                 <i class="fa-solid mr-1" :class="receipt.splitWith.includes(p) ? 'fa-check' : 'fa-plus'"></i>{{ p }}
                                             </button>
                                         </div>
-                                        <p v-if="receipt.splitWith.length" class="text-[11px] font-bold text-slate-500 mt-2.5">
-                                            共 {{ receipt.splitWith.length + 1 }} 人平分，每人 <span class="font-sans" :style="{ color: currentTheme.vivid }">{{ curSym(receipt.data.currency) }}{{ formatCurrency(receiptShare) }}</span>，
-                                            {{ receipt.splitWith.join('、') }} 要還 {{ receiptPayer }}
-                                        </p>
+                                        <div v-if="receipt.splitWith.length" class="mt-3">
+                                            <div class="grid grid-cols-2 gap-1 p-1 rounded-lg bg-slate-100 mb-2.5">
+                                                <button type="button" @click.stop="receipt.splitMode = 'even'" class="py-1.5 rounded-md text-[11px] font-bold" :class="receipt.splitMode !== 'custom' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500'">平分</button>
+                                                <button type="button" @click.stop="setReceiptSplitCustom" class="py-1.5 rounded-md text-[11px] font-bold" :class="receipt.splitMode === 'custom' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500'">自己填金額</button>
+                                            </div>
+                                            <p v-if="receipt.splitMode !== 'custom'" class="text-[11px] font-bold text-slate-500">
+                                                共 {{ receipt.splitWith.length + 1 }} 人平分，每人 <span class="font-sans" :style="{ color: currentTheme.vivid }">{{ curSym(receipt.data.currency) }}{{ formatCurrency(receiptShare) }}</span>，{{ receipt.splitWith.join('、') }} 要還 {{ receiptPayer }}
+                                            </p>
+                                            <div v-else class="rounded-xl border border-slate-200 divide-y divide-slate-100">
+                                                <div v-for="p in receipt.splitWith" :key="'rsa'+p" class="flex items-center px-3 py-2">
+                                                    <span class="flex-1 min-w-0 text-[12px] font-bold text-slate-600 truncate">{{ p }} 要還</span>
+                                                    <span class="text-[11px] font-bold text-slate-400 font-sans mr-1">{{ curSym(receipt.data.currency) }}</span>
+                                                    <input type="text" inputmode="decimal" v-model="receipt.splitAmounts[p]" placeholder="0" class="w-[80px] text-right bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-[13px] font-sans font-bold outline-none focus:border-slate-400">
+                                                </div>
+                                                <div class="flex items-center px-3 py-2 bg-slate-50/60">
+                                                    <span class="flex-1 text-[11px] font-bold text-slate-400">{{ receiptPayer }} 自己負擔</span>
+                                                    <span class="text-[12px] font-bold font-sans" :class="receiptSelfPart < 0 ? 'text-[#9E0E26]' : 'text-slate-500'">{{ curSym(receipt.data.currency) }}{{ formatCurrency(receiptSelfPart) }}</span>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </template>
@@ -1494,7 +1514,7 @@
                                                         <span class="font-sans ml-2">{{ curSym(r.currency) }}{{ formatCurrency(r.total) }}</span>
                                                     </div>
                                                     <div v-for="(it, ii) in r.items" :key="'vri'+ii" class="flex items-baseline text-[12px] py-0.5">
-                                                        <span class="flex-1 min-w-0 font-bold text-slate-700 truncate">{{ it.zh || it.name }}<span v-if="it.qty > 1" class="text-slate-400 font-sans"> ×{{ it.qty }}</span></span>
+                                                        <span class="flex-1 min-w-0 font-bold text-slate-700 truncate">{{ (it.zh || it.name || '').replace(/[（(]\s*[?？]\s*[)）]/g, '') }}<span v-if="it.qty > 1" class="text-slate-400 font-sans"> ×{{ it.qty }}</span><span v-if="it.unsure || /[（(]\s*[?？]\s*[)）]/.test(it.zh || '')" class="text-[9px] font-bold text-[#B45309] bg-[#FEF3C7] rounded px-1 py-[1px] ml-1 align-middle">待確認</span></span>
                                                         <span class="font-sans font-bold text-slate-600 ml-2 whitespace-nowrap">{{ curSym(r.currency) }}{{ formatCurrency(it.price) }}</span>
                                                     </div>
                                                 </div>
@@ -1531,7 +1551,7 @@
                                             <div class="bg-white mx-1 mb-1 rounded-lg">
                                                 <div v-for="(it, gi) in g.items" :key="'vi'+it.idx" @click.stop="toggleCheckInView(it.idx)"
                                                      class="flex items-center px-2.5 py-2.5 cursor-pointer" :class="gi > 0 ? 'border-t border-slate-100' : ''">
-                                                    <span class="w-5 h-5 rounded-full border-[1.5px] flex items-center justify-center shrink-0 mr-2.5 transition-colors" :style="it.item.done ? { backgroundColor: kindColor(g.kind), borderColor: kindColor(g.kind) } : { borderColor: '#CBD5E1', backgroundColor: '#fff' }">
+                                                    <span class="w-5 h-5 rounded-[5px] border-[1.5px] flex items-center justify-center shrink-0 mr-2.5 transition-colors" :style="it.item.done ? { backgroundColor: kindColor(g.kind), borderColor: kindColor(g.kind) } : { borderColor: '#CBD5E1', backgroundColor: '#fff' }">
                                                         <i v-if="it.item.done" class="fa-solid fa-check text-[8px]" :style="{ color: onColor(kindColor(g.kind)) }"></i>
                                                     </span>
                                                     <span class="flex-1 min-w-0 text-[14px] font-bold leading-snug" :class="it.item.done ? 'text-slate-300 line-through' : 'text-slate-700'">{{ it.item.text || '未命名' }}</span>
@@ -1664,11 +1684,30 @@
                                     </label>
                                 </div>
                                 <div v-if="selectedSpot.receipts && selectedSpot.receipts.length" class="space-y-1.5">
-                                    <div v-for="(r, ri) in selectedSpot.receipts" :key="'erc'+ri" class="flex items-center rounded-lg bg-slate-50 border border-slate-100 px-2.5 py-1.5">
-                                        <i class="fa-solid fa-receipt text-slate-300 text-[11px] mr-2"></i>
-                                        <span class="flex-1 min-w-0 text-[12px] font-bold text-slate-600 truncate">{{ r.storeZh || r.store || '收據' }}・{{ (r.items || []).length }} 項</span>
-                                        <span class="text-[12px] font-bold text-slate-500 font-sans ml-2">{{ curSym(r.currency) }}{{ formatCurrency(r.total) }}</span>
-                                        <button type="button" @click.stop="removeReceipt(ri)" class="w-6 h-6 ml-1 text-slate-300 hover:text-red-400 flex items-center justify-center shrink-0"><i class="fa-solid fa-xmark text-[11px]"></i></button>
+                                    <div v-for="(r, ri) in selectedSpot.receipts" :key="'erc'+ri" class="rounded-lg bg-slate-50 border border-slate-100 overflow-hidden">
+                                        <div class="flex items-center px-2.5 py-1.5 cursor-pointer" @click.stop="openRc[ri] = !openRc[ri]">
+                                            <i class="fa-solid fa-receipt text-slate-300 text-[11px] mr-2"></i>
+                                            <span class="flex-1 min-w-0 text-[12px] font-bold text-slate-600 truncate">{{ r.storeZh || r.store || '收據' }}・{{ (r.items || []).length }} 項<span v-if="(r.items || []).some(i => i.unsure)" class="text-[9px] font-bold text-[#B45309] bg-[#FEF3C7] rounded px-1 py-[1px] ml-1">有待確認</span></span>
+                                            <span class="text-[12px] font-bold text-slate-500 font-sans ml-2">{{ curSym(r.currency) }}{{ formatCurrency(r.total) }}</span>
+                                            <i class="fa-solid text-[9px] text-slate-400 ml-1.5" :class="openRc[ri] ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+                                            <button type="button" @click.stop="removeReceipt(ri)" class="w-6 h-6 ml-0.5 text-slate-300 hover:text-red-400 flex items-center justify-center shrink-0"><i class="fa-solid fa-xmark text-[11px]"></i></button>
+                                        </div>
+                                        <div v-if="openRc[ri]" class="bg-white border-t border-slate-100 divide-y divide-slate-100">
+                                            <div v-for="(it, ii) in r.items" :key="'eri'+ii" class="flex items-center gap-2 px-2.5 py-1.5">
+                                                <div class="flex-1 min-w-0">
+                                                    <div class="flex items-center gap-1">
+                                                        <input type="text" v-model="it.zh" @input="it.unsure = false" class="flex-1 min-w-0 bg-transparent text-[12px] font-bold text-slate-700 outline-none border-b border-transparent focus:border-slate-200">
+                                                        <span v-if="it.unsure" class="text-[9px] font-bold text-[#B45309] bg-[#FEF3C7] rounded px-1 py-[1px] shrink-0">待確認</span>
+                                                    </div>
+                                                    <input type="text" v-model="it.name" placeholder="原文（選填）" class="w-full bg-transparent text-[10px] font-bold text-slate-400 outline-none border-b border-transparent focus:border-slate-200">
+                                                </div>
+                                                <span class="text-[10px] font-bold text-slate-400 font-sans">{{ curSym(r.currency) }}</span>
+                                                <input type="text" inputmode="decimal" :value="it.price" @change="editReceiptItemPrice(r, it, $event.target.value)"
+                                                       class="w-[58px] text-right bg-transparent text-[13px] font-sans font-bold text-slate-700 outline-none border-b border-dashed border-slate-200 focus:border-slate-400">
+                                                <button type="button" @click.stop="removeReceiptItem(r, ii)" class="w-5 h-5 text-slate-300 hover:text-red-400 flex items-center justify-center shrink-0"><i class="fa-solid fa-xmark text-[10px]"></i></button>
+                                            </div>
+                                            <p class="text-[10px] font-bold text-slate-400 px-2.5 py-1.5">改價格或刪掉品項，花費會跟著調整</p>
+                                        </div>
                                     </div>
                                 </div>
                                 
@@ -2176,7 +2215,7 @@
                                         <button type="button" @click="pushSync(); connectSync()" class="text-[11px] font-bold text-slate-500 bg-slate-50 border border-slate-200 rounded-full px-2.5 py-1 active:scale-95"><i class="fa-solid fa-rotate mr-1"></i>立即同步</button>
                                     </div>
                                     <p v-if="sync.error" class="text-[11px] font-bold text-[#9E0E26] mt-2 leading-relaxed">{{ sync.error }}</p>
-                                    <p class="text-[11px] font-bold text-slate-400 mt-2 leading-relaxed">行程、花費、墊付、清單會即時同步；照片與附件只存在各自手機。</p>
+                                    <p class="text-[11px] font-bold text-slate-400 mt-2 leading-relaxed">行程、花費、墊付、清單、照片都會同步（照片每台下載一次）；PDF 附件只存在各自手機。</p>
                                     <div class="flex gap-2 mt-3">
                                         <button type="button" @click="shareInvite" class="flex-1 text-[12px] font-bold py-2.5 rounded-lg bg-[#1e293b] text-white active:scale-[0.98]"><i class="fa-solid fa-user-plus mr-1.5"></i>邀請旅伴</button>
                                         <button type="button" @click="stopSync" class="text-[12px] font-bold py-2.5 px-3 rounded-lg bg-white border border-slate-200 text-slate-500 active:scale-[0.98]">停止同步</button>
@@ -2209,7 +2248,7 @@
                                     <input type="text" v-model.trim="tripInfo.aiApiKey" placeholder="AIza…（有填就直接用這把，不經過 AI Logic）" autocomplete="off" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2 text-[12px] font-sans outline-none">
                                     <p v-if="!sync.enabled && !tripInfo.aiApiKey" class="text-[11px] font-bold text-[#9E0E26] mt-2">要先開啟上面的「雲端同步」，或填入 Gemini API 金鑰</p>
                                     <p v-else class="text-[10px] font-bold text-slate-400 mt-2">金鑰會同步給旅伴，旅伴不用再設定。</p>
-                                    <p class="text-[10px] font-bold text-slate-300 mt-1 font-sans">App 版本 37</p>
+                                    <p class="text-[10px] font-bold text-slate-300 mt-1 font-sans">App 版本 38</p>
                                 </div>
                             </div>
 
@@ -2888,7 +2927,7 @@
                     },
                     saveTimeout: null, isStateLoaded: false,
                     sortableInstances: {},
-                    isDraggingSpot: false, justDraggedSpot: false, receipt: { open: false, phase: '', target: 'new', img: '', b64: '', error: '', errorDetail: '', split: false, splitWith: [], data: null, amount: '', dayIdx: 0, spotIdx: -1, mode: 'new', category: '', payer: '', method: '信用卡', zoom: false }, swipe: { id: null, open: null, offset: 0, active: false }, undoDelete: null, justSwiped: false,
+                    isDraggingSpot: false, justDraggedSpot: false, openRc: {}, receipt: { open: false, phase: '', target: 'new', img: '', b64: '', error: '', errorDetail: '', split: false, splitWith: [], splitMode: 'even', splitAmounts: {}, data: null, amount: '', dayIdx: 0, spotIdx: -1, mode: 'new', category: '', payer: '', method: '信用卡', zoom: false }, swipe: { id: null, open: null, offset: 0, active: false }, undoDelete: null, justSwiped: false,
                     showExpenseDetail: false, expenseDetailKey: '',
                     showSwapModal: false, toastMsg: '', showSettleDetail: false, airlineGroups: AIRLINE_GROUPS, photoDrag: { obj: null },
                     sync: { enabled: false, config: null, code: '', status: 'off', lastAt: 0, error: '', deviceId: '', joining: false }, syncConfigText: '', syncInviteText: '', isApplyingRemote: false,
@@ -2993,6 +3032,10 @@
                     const R = this.receipt;
                     if (R.target === 'form') return (this.selectedSpot && this.selectedSpot.payer && this.selectedSpot.payer !== '自訂') ? this.selectedSpot.payer : '';
                     return R.payer || '';
+                },
+                receiptSelfPart() {
+                    const others = (this.receipt.splitWith || []).reduce((t, p) => t + this.receiptNum((this.receipt.splitAmounts || {})[p]), 0);
+                    return Math.round((this.receiptNum(this.receipt.amount) - others) * 100) / 100;
                 },
                 receiptShare() {
                     const n = (this.receipt.splitWith || []).length + 1;
@@ -4542,6 +4585,10 @@
                     this.itinerary.forEach(d => (d.spots || []).forEach(sp => (sp.images || []).forEach(i => {
                         if (i && i.pid && /^data:/.test(i.url || '') && !up.has(i.pid) && !todo.some(t => t.pid === i.pid)) todo.push(i);
                     })));
+                    this.itinerary.forEach(d => {
+                        const h = d.hero;
+                        if (h && h.pid && /^data:/.test(h.image || '') && !up.has(h.pid) && !todo.some(t => t.pid === h.pid)) todo.push({ pid: h.pid, url: h.image });
+                    });
                     for (const i of todo) {
                         if (i.url.length > 950000) continue;   // 單張太大就不傳（新上傳的照片都會先壓縮，正常不會超過）
                         await _fbRef.collection('photos').doc(i.pid).set({ d: i.url, t: Date.now() });
@@ -4553,6 +4600,7 @@
                     if (!_fbRef || _photoFetching) return;
                     const need = new Set();
                     this.itinerary.forEach(d => (d.spots || []).forEach(sp => (sp.images || []).forEach(i => { if (i && i.pid && !i.url) need.add(i.pid); })));
+                    this.itinerary.forEach(d => { if (d.hero && d.hero.pid && !d.hero.image) need.add(d.hero.pid); });
                     if (!need.size) return;
                     _photoFetching = true;
                     try {
@@ -4562,6 +4610,7 @@
                             if (!snap.exists) continue;
                             const url = snap.data().d;
                             up.add(pid);
+                            this.itinerary.forEach(d => { if (d.hero && d.hero.pid === pid) d.hero.image = url; });
                             this.itinerary.forEach(d => (d.spots || []).forEach(sp => {
                                 (sp.images || []).forEach(i => { if (i.pid === pid) i.url = url; });
                                 if (sp.coverPid === pid || (!sp.coverImage && sp.images && sp.images[0] && sp.images[0].pid === pid)) sp.coverImage = url;
@@ -5168,6 +5217,7 @@
                             canvas.width = width; canvas.height = height; canvas.getContext('2d').drawImage(img, 0, 0, width, height);
                             this.editHeroData.image = canvas.toDataURL('image/jpeg', 0.7);
                             this.editHeroData.position = 50;
+                            this.editHeroData.pid = 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);   // 新照片 → 新編號，旅伴才會下載
                         }; img.src = e.target.result;
                     }; reader.readAsDataURL(file);
                 },
@@ -5295,6 +5345,14 @@
                 },
                 // 方案 B：直接用 Google AI Studio 的 Gemini API 金鑰（不經過 Firebase AI Logic）
                 async receiptGenerateDirect(parts, apiKey) {
+                    try { return await this.receiptGenerateDirectOnce(parts, apiKey); }
+                    catch (err) {
+                        if (!this.isModelBusy(err)) throw err;
+                        await new Promise(r => setTimeout(r, 2000));
+                        return this.receiptGenerateDirectOnce(parts, apiKey);
+                    }
+                },
+                async receiptGenerateDirectOnce(parts, apiKey) {
                     const body = { contents: [{ role: 'user', parts: parts.map(p => typeof p === 'string' ? { text: p } : { inline_data: { mime_type: p.inlineData.mimeType, data: p.inlineData.data } }) }],
                                    generationConfig: { responseMimeType: 'application/json' } };
                     let saved = '';
@@ -5379,7 +5437,7 @@
                     if (!file) return;
                     if (!this.sync.config && !(this.tripInfo.aiApiKey || '').trim()) { alert('收據辨識還沒設定：請到「設定 → 收據辨識（AI）」貼上金鑰。'); return; }
                     const prev = this.receipt;
-                    this.receipt = { open: true, phase: 'loading', target, img: '', b64: '', error: '', errorDetail: '', split: false, splitWith: [], data: null, amount: '', dayIdx: this.activeDay, spotIdx: -1, mode: 'new',
+                    this.receipt = { open: true, phase: 'loading', target, img: '', b64: '', error: '', errorDetail: '', split: false, splitWith: [], splitMode: 'even', splitAmounts: {}, data: null, amount: '', dayIdx: this.activeDay, spotIdx: -1, mode: 'new',
                                      category: '', payer: prev.payer || this.tripInfo.passengerName || '', method: '信用卡', zoom: false };
                     try {
                         const { url, b64 } = await this.receiptCompress(file);
@@ -5417,7 +5475,8 @@
                     const cur = String(raw.currency || 'JPY').toUpperCase().trim();
                     const known = cur === 'JPY' || cur === 'TWD';
                     const items = (Array.isArray(raw.items) ? raw.items : []).map(it => ({
-                        name: String(it.name || '').trim(), zh: String(it.zh || it.name || '').trim(),
+                        name: String(it.name || '').trim(), zh: String(it.zh || it.name || '').replace(/[（(]\s*[?？]\s*[)）]/g, '').trim(),
+                        unsure: /[（(]\s*[?？]\s*[)）]/.test(String(it.zh || '')),
                         qty: Math.max(1, Math.round(this.receiptNum(it.qty) || 1)), price: String(Math.round(this.receiptNum(it.price) * 100) / 100), on: true
                     })).filter(it => it.zh || it.name || this.receiptNum(it.price));
                     const pay = String(raw.payment || '');
@@ -5488,6 +5547,14 @@
                     R.split = !R.split;
                     if (R.split && !R.splitWith.length) R.splitWith = this.peopleList.filter(p => p !== this.receiptPayer);
                 },
+                setReceiptSplitCustom() {
+                    const R = this.receipt;
+                    if (R.splitMode !== 'custom') {
+                        const m = {}; R.splitWith.forEach(p => { m[p] = R.splitAmounts[p] != null && R.splitAmounts[p] !== '' ? R.splitAmounts[p] : String(this.receiptShare); });
+                        R.splitAmounts = m;
+                    }
+                    R.splitMode = 'custom';
+                },
                 toggleReceiptSplitPerson(p) {
                     const L = this.receipt.splitWith;
                     this.receipt.splitWith = L.includes(p) ? L.filter(x => x !== p) : [...L, p];
@@ -5503,9 +5570,8 @@
                     // 分帳：每人應付的金額（換成這個行程的幣別）加到墊付紀錄
                     if (split && split.people.length) {
                         if (!Array.isArray(spot.advances)) spot.advances = [];
-                        const share = this.roundCur(this.convertAmt(split.share, cur, spot.currency), spot.currency);
-                        rec.split = split.people.map(p => ({ person: p, amount: share }));
-                        split.people.forEach(p => {
+                        rec.split = split.people.map(p => ({ person: p, amount: this.roundCur(this.convertAmt(split.amounts[p], cur, spot.currency), spot.currency) }));
+                        rec.split.forEach(({ person: p, amount: share }) => {
                             const a = spot.advances.find(x => x.person === p);
                             if (a) a.amount = String(this.roundCur(this.receiptNum(a.amount) + share, spot.currency));
                             else spot.advances.push({ person: p, amount: String(share) });
@@ -5531,8 +5597,15 @@
                     const amount = Math.round(this.receiptNum(R.amount) * 100) / 100;
                     if (!amount) { alert('記帳金額是 0，請確認一下'); return; }
                     const rec = { id: 'r' + Date.now().toString(36), store: d.store, storeZh: d.storeZh, address: d.address || '', date: d.date, currency: d.currency, total: amount,
-                                  items: d.items.filter(i => i.on && (i.zh || i.name)).map(i => ({ name: i.name, zh: i.zh, qty: i.qty, price: this.receiptNum(i.price) })) };
-                    const split = R.split && this.receiptPayer && R.splitWith.length ? { payer: this.receiptPayer, people: R.splitWith.slice(), share: this.receiptShare } : null;
+                                  items: d.items.filter(i => i.on && (i.zh || i.name)).map(i => ({ name: i.name, zh: i.zh, qty: i.qty, price: this.receiptNum(i.price), unsure: !!i.unsure })) };
+                    let split = null;
+                    if (R.split && this.receiptPayer && R.splitWith.length) {
+                        const amounts = {};
+                        R.splitWith.forEach(p => { amounts[p] = R.splitMode === 'custom' ? this.receiptNum(R.splitAmounts[p]) : this.receiptShare; });
+                        if (R.splitMode === 'custom' && this.receiptSelfPart < 0 && !confirm('分帳金額加起來比記帳金額還多，確定要這樣存嗎？')) return;
+                        const people = R.splitWith.filter(p => amounts[p] > 0);
+                        if (people.length) split = { payer: this.receiptPayer, people, amounts };
+                    }
                     let msg = '';
                     if (R.target === 'form') {
                         const sp = this.selectedSpot;
@@ -5556,7 +5629,7 @@
                             const addr = d.address || '';
                             const mapQuery = [d.store || d.storeZh, addr].filter(Boolean).join(' ');
                             const spot = { id: this.makeSpotId(), type: this.receiptSpotType(R.category), name: d.storeZh || d.store || '購物', startTime: d.time || '', endTime: '', durationH: '', durationM: '',
-                                           desc: '', location: addr || (d.store && d.store !== d.storeZh ? d.store : ''),
+                                           desc: '', location: d.store || d.storeZh || '',
                                            googleMapUrl: addr ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(mapQuery) : '',
                                            hours: '', warning: '',
                                            cost: '', currency: d.currency, costCategory: R.category || '', payer: R.payer || '', paymentMethod: R.method || '信用卡', lat: null, lng: null,
@@ -5570,6 +5643,26 @@
                     }
                     this.closeReceipt();
                     this.showToast(msg);
+                },
+                // 編輯頁修改收據品項價格 / 刪除品項：花費跟著調整
+                applyReceiptDelta(r, delta) {
+                    const sp = this.selectedSpot; if (!sp || !delta) return;
+                    r.total = this.roundCur(this.receiptNum(r.total) + delta, r.currency);
+                    const cur = sp.currency || r.currency;
+                    const d2 = this.roundCur(this.convertAmt(delta, r.currency, cur), cur);
+                    sp.cost = Math.max(0, this.roundCur(this.receiptNum(sp.cost) + d2, cur)) || '';
+                    if (r.added != null) r.added = this.roundCur(Number(r.added) + d2, cur);
+                },
+                editReceiptItemPrice(r, it, val) {
+                    const nv = this.receiptNum(val), old = this.receiptNum(it.price);
+                    it.price = nv;
+                    this.applyReceiptDelta(r, nv - old);
+                },
+                removeReceiptItem(r, ii) {
+                    const it = r.items[ii]; if (!it) return;
+                    if (!confirm(`刪除「${it.zh || it.name || '這個品項'}」？花費會扣掉 ${this.curSym(r.currency)}${this.formatCurrency(it.price)}`)) return;
+                    r.items.splice(ii, 1);
+                    this.applyReceiptDelta(r, -this.receiptNum(it.price));
                 },
                 // 移除收據：一併扣掉它加上去的金額和分帳
                 removeReceipt(ri) {
@@ -5591,6 +5684,7 @@
                         if (!sp.advances.length) sp.isAdvance = false;
                     }
                     sp.receipts.splice(ri, 1);
+                    this.openRc = {};
                 },
                 // --- 行程卡片：左滑刪除 ---
                 swipeOffset(id) {
@@ -6039,6 +6133,7 @@
         }
         // 每張照片給一個編號（舊照片也補上）
         function syncEnsurePhotoIds(st) {
+            (st.itinerary || []).forEach(d => { if (d.hero && /^data:/.test(d.hero.image || '') && !d.hero.pid) d.hero.pid = 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); });
             (st.itinerary || []).forEach(d => (d.spots || []).forEach(sp => {
                 if (!Array.isArray(sp.images)) return;
                 sp.images = sp.images.map(i => typeof i === 'string' ? { url: i, pos: sp.coverImage === i ? (sp.coverPosition || 50) : 50, desc: '' } : i);
@@ -6054,7 +6149,7 @@
             (st.itinerary || []).forEach(day => {
                 const key = day.rawDate || day.label;
                 const hero = day.hero ? Object.assign({}, day.hero) : null;
-                if (hero && /^data:/.test(hero.image || '')) hero.image = '';   // 自己上傳的封面照片留在本機
+                if (hero && /^data:/.test(hero.image || '')) hero.image = '';   // 照片本身另外存（photos/編號），這裡只同步編號
                 items['day:' + key] = JSON.stringify({ hero, customSorted: !!day.customSorted, order: (day.spots || []).map(s => s.id) });
                 (day.spots || []).forEach(sp => { if (sp.id) items['spot:' + sp.id] = JSON.stringify(Object.assign(syncStripSpot(sp), { __day: key })); });
             });
@@ -6117,10 +6212,11 @@
             Object.keys(spotsByDay).forEach(k => { if (!dayKeys.includes(k)) dayKeys.push(k); });
             dayKeys.sort();
             const localHero = {};
-            (localState.itinerary || []).forEach(d => { if (d.hero && /^data:/.test(d.hero.image || '')) localHero[d.rawDate || d.label] = d.hero.image; });
+            (localState.itinerary || []).forEach(d => { if (d.hero && /^data:/.test(d.hero.image || '')) localHero[d.rawDate || d.label] = { image: d.hero.image, pid: d.hero.pid || '' }; });
             const days = dayKeys.map(key => {
                 const meta = get('day:' + key) || {};
-                if (meta.hero && !meta.hero.image && localHero[key]) meta.hero.image = localHero[key];
+                const lh = localHero[key];
+                if (meta.hero && !meta.hero.image && lh && (!meta.hero.pid || lh.pid === meta.hero.pid)) meta.hero.image = lh.image;   // 同一張就用本機的；換了照片就等下載
                 const list = spotsByDay[key] || [];
                 const order = meta.order || [];
                 list.sort((a, b) => {
