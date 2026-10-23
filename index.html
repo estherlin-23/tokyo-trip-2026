@@ -474,7 +474,11 @@
                                                         <i class="fa-regular fa-calendar w-3.5 mt-0.5 shrink-0 text-slate-400"></i>
                                                         <span class="leading-tight font-sans">{{ fmtMD(spot.checkInDate) }} → {{ fmtMD(spot.checkOutDate) }}</span>
                                                         <span v-if="hotelNights(spot)" class="ml-1.5 text-[#1A5F8A]">{{ hotelNights(spot) }} 晚</span>
-                                                        <span v-if="spot.checkInTime" class="ml-1.5 text-slate-400 font-sans">{{ spot.checkInTime }} 入住</span>
+                                                        <span v-if="spot.checkInTime || spot.checkInEnd" class="ml-1.5 text-slate-400 font-sans">{{ timeRange(spot.checkInTime, spot.checkInEnd) }} 入住</span>
+                                                    </div>
+                                                    <div v-if="spot.checkOutTime" class="flex items-start">
+                                                        <i class="fa-solid fa-door-closed w-3.5 mt-0.5 shrink-0 text-slate-400 text-[10px]"></i>
+                                                        <span class="font-sans"><span class="text-[#9E0E26]">{{ spot.checkOutTime }}</span> 前退房</span>
                                                     </div>
                                                     <div v-if="spot.phone || spot.bookingRef" class="flex items-start flex-wrap">
                                                         <a v-if="spot.phone" :href="'tel:' + spot.phone" @click.stop class="inline-flex items-center mr-3"><i class="fa-solid fa-phone w-3.5 shrink-0 text-slate-400 text-[10px]"></i><span class="font-sans">{{ spot.phone }}</span></a>
@@ -1050,7 +1054,7 @@
                             <span class="w-8 h-8 rounded-lg bg-[#EAF3F9] text-[#1E4E79] flex items-center justify-center mr-2.5 shrink-0"><i class="fa-solid fa-receipt text-[13px]"></i></span>
                             <div class="flex-1 min-w-0">
                                 <p class="text-[15px] font-bold text-slate-800 leading-tight">收據辨識</p>
-                                <p class="text-[10px] font-bold text-slate-400">{{ receipt.phase === 'review' ? '確認一下品項和金額，可以直接修改' : 'AI 會讀出品項、價格和總額' }}<span class="text-slate-300 font-sans ml-1">v39</span></p>
+                                <p class="text-[10px] font-bold text-slate-400">{{ receipt.phase === 'review' ? '確認一下品項和金額，可以直接修改' : 'AI 會讀出品項、價格和總額' }}<span class="text-slate-300 font-sans ml-1">v40</span></p>
                             </div>
                             <button type="button" @click.stop="closeReceipt" class="w-8 h-8 bg-slate-100 rounded-full text-slate-500 flex justify-center items-center shrink-0"><i class="fa-solid fa-xmark text-sm"></i></button>
                         </div>
@@ -1457,13 +1461,18 @@
                                     <!-- 專屬欄位：住宿 -->
                                     <div v-if="selectedSpot.type === 'hotel'" class="space-y-2 mb-4 text-sm font-bold text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-100">
                                         <div class="flex justify-between items-center">
-                                            <span><i class="fa-solid fa-clock w-5 text-center text-slate-400"></i>可辦理入住時間</span>
-                                            <span class="font-sans text-slate-800">{{ selectedSpot.checkInTime || '-' }}</span>
+                                            <span><i class="fa-solid fa-clock w-5 text-center text-slate-400"></i>可辦理入住</span>
+                                            <span class="font-sans text-slate-800">{{ timeRange(selectedSpot.checkInTime, selectedSpot.checkInEnd) || '-' }}</span>
                                         </div>
                                         <div class="flex justify-between items-center">
-                                            <span><i class="fa-solid fa-clock-rotate-left w-5 text-center text-slate-400"></i>退房時間</span>
-                                            <span class="font-sans text-slate-800">{{ selectedSpot.checkOutTime || '-' }}</span>
+                                            <span><i class="fa-solid fa-clock-rotate-left w-5 text-center text-slate-400"></i>退房</span>
+                                            <span class="font-sans text-slate-800">{{ timeRange(selectedSpot.checkOutStart, selectedSpot.checkOutTime) || '-' }}<span v-if="selectedSpot.checkOutTime" class="text-[10px] text-[#9E0E26] ml-1.5">最晚 {{ selectedSpot.checkOutTime }}</span></span>
                                         </div>
+                                        <div v-if="selectedSpot.startTime" class="flex justify-between items-center">
+                                            <span><i class="fa-solid fa-person-walking-luggage w-5 text-center text-slate-400"></i>預計抵達</span>
+                                            <span class="font-sans text-slate-800">{{ selectedSpot.startTime }}</span>
+                                        </div>
+                                        <p v-if="hotelArrivalNote(selectedSpot)" class="text-[11px] font-bold" :class="hotelArrivalNote(selectedSpot).bad ? 'text-[#9E0E26]' : 'text-[#B45309]'"><i class="fa-solid fa-circle-info mr-1"></i>{{ hotelArrivalNote(selectedSpot).text }}</p>
                                         <div v-if="selectedSpot.phone" class="flex justify-between items-center pt-1 border-t border-slate-200 mt-1">
                                             <span><i class="fa-solid fa-phone w-5 text-center text-slate-400"></i>聯絡電話</span>
                                             <span class="font-sans text-slate-800">{{ selectedSpot.phone }}</span>
@@ -1671,6 +1680,13 @@
                                         <label class="block text-[10px] font-bold text-slate-500 mb-1.5">退房日期<span v-if="hotelNights(selectedSpot)" class="ml-1 text-[#1A5F8A]">（共 {{ hotelNights(selectedSpot) }} 晚）</span></label>
                                         <date-field v-model="selectedSpot.checkOutDate" short="1" placeholder="選擇日期" :min="selectedSpot.checkInDate" class="w-full min-w-0 bg-white border border-slate-200 shadow-sm rounded-xl px-2 h-[36px] text-[12px] font-bold"></date-field>
                                     </div>
+                                </div>
+                                <div v-if="selectedSpot.type === 'hotel'">
+                                    <label class="block text-[10px] font-bold text-slate-500 mb-1.5">預計抵達時間<span class="font-normal text-slate-400 ml-1">（行程時間軸用這個排序）</span></label>
+                                    <div class="flex">
+                                        <input type="text" inputmode="numeric" maxlength="5" placeholder="例 18:30" autocomplete="off" :value="selectedSpot.startTime" @input="selectedSpot.startTime = formatTimeTyping($event.target.value); $event.target.value = selectedSpot.startTime" @blur="selectedSpot.startTime = normalizeTime(selectedSpot.startTime)" class="w-1/2 min-w-0 bg-white border border-slate-200 shadow-sm rounded-xl px-1 py-2 text-xs font-sans font-bold outline-none text-center focus:border-brand tracking-wider placeholder:text-slate-300 placeholder:font-normal placeholder:tracking-normal">
+                                    </div>
+                                    <p v-if="hotelArrivalNote(selectedSpot)" class="text-[11px] font-bold mt-1.5" :class="hotelArrivalNote(selectedSpot).bad ? 'text-[#9E0E26]' : 'text-[#B45309]'"><i class="fa-solid fa-circle-info mr-1"></i>{{ hotelArrivalNote(selectedSpot).text }}</p>
                                 </div>
                             </div>
                             
@@ -2021,14 +2037,20 @@
 
                             <!-- 🏨 住宿專屬表單 -->
                             <div v-if="selectedSpot.type === 'hotel'" class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 space-y-4">
-                                <div class="flex space-x-3">
-                                    <div class="w-1/2">
-                                        <label class="block text-[10px] font-bold text-[#1A7DA1] mb-1.5">可辦理入住時間</label>
-                                        <input type="text" inputmode="numeric" maxlength="5" placeholder="例 15:00" autocomplete="off" :value="selectedSpot.checkInTime" @input="selectedSpot.checkInTime = formatTimeTyping($event.target.value); $event.target.value = selectedSpot.checkInTime" @blur="selectedSpot.checkInTime = normalizeTime(selectedSpot.checkInTime)" class="w-full min-w-0 bg-white border border-slate-200 shadow-sm rounded-lg px-3 py-2 text-xs font-bold outline-none text-center font-sans tracking-wider placeholder:text-slate-300 placeholder:font-normal placeholder:tracking-normal">
+                                <div>
+                                    <label class="block text-[10px] font-bold text-[#1A7DA1] mb-1.5"><i class="fa-solid fa-door-open mr-1"></i>可辦理入住（飯店規定）</label>
+                                    <div class="flex items-center gap-2">
+                                        <input type="text" inputmode="numeric" maxlength="5" placeholder="最早 15:00" autocomplete="off" :value="selectedSpot.checkInTime" @input="selectedSpot.checkInTime = formatTimeTyping($event.target.value); $event.target.value = selectedSpot.checkInTime" @blur="selectedSpot.checkInTime = normalizeTime(selectedSpot.checkInTime)" class="flex-1 w-full min-w-0 bg-white border border-slate-200 shadow-sm rounded-lg px-1 py-2 text-xs font-bold outline-none text-center font-sans tracking-wider placeholder:text-slate-300 placeholder:font-normal placeholder:tracking-normal">
+                                        <span class="text-slate-300 font-bold shrink-0">~</span>
+                                        <input type="text" inputmode="numeric" maxlength="5" placeholder="最晚 23:00" autocomplete="off" :value="selectedSpot.checkInEnd" @input="selectedSpot.checkInEnd = formatTimeTyping($event.target.value); $event.target.value = selectedSpot.checkInEnd" @blur="selectedSpot.checkInEnd = normalizeTime(selectedSpot.checkInEnd)" class="flex-1 w-full min-w-0 bg-white border border-slate-200 shadow-sm rounded-lg px-1 py-2 text-xs font-bold outline-none text-center font-sans tracking-wider placeholder:text-slate-300 placeholder:font-normal placeholder:tracking-normal">
                                     </div>
-                                    <div class="w-1/2">
-                                        <label class="block text-[10px] font-bold text-[#1A7DA1] mb-1.5">退房時間</label>
-                                        <input type="text" inputmode="numeric" maxlength="5" placeholder="例 15:00" autocomplete="off" :value="selectedSpot.checkOutTime" @input="selectedSpot.checkOutTime = formatTimeTyping($event.target.value); $event.target.value = selectedSpot.checkOutTime" @blur="selectedSpot.checkOutTime = normalizeTime(selectedSpot.checkOutTime)" class="w-full min-w-0 bg-white border border-slate-200 shadow-sm rounded-lg px-3 py-2 text-xs font-bold outline-none text-center font-sans tracking-wider placeholder:text-slate-300 placeholder:font-normal placeholder:tracking-normal">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold text-[#1A7DA1] mb-1.5"><i class="fa-solid fa-door-closed mr-1"></i>可辦理退房（右邊是最晚期限）</label>
+                                    <div class="flex items-center gap-2">
+                                        <input type="text" inputmode="numeric" maxlength="5" placeholder="最早 07:00" autocomplete="off" :value="selectedSpot.checkOutStart" @input="selectedSpot.checkOutStart = formatTimeTyping($event.target.value); $event.target.value = selectedSpot.checkOutStart" @blur="selectedSpot.checkOutStart = normalizeTime(selectedSpot.checkOutStart)" class="flex-1 w-full min-w-0 bg-white border border-slate-200 shadow-sm rounded-lg px-1 py-2 text-xs font-bold outline-none text-center font-sans tracking-wider placeholder:text-slate-300 placeholder:font-normal placeholder:tracking-normal">
+                                        <span class="text-slate-300 font-bold shrink-0">~</span>
+                                        <input type="text" inputmode="numeric" maxlength="5" placeholder="最晚 11:00" autocomplete="off" :value="selectedSpot.checkOutTime" @input="selectedSpot.checkOutTime = formatTimeTyping($event.target.value); $event.target.value = selectedSpot.checkOutTime" @blur="selectedSpot.checkOutTime = normalizeTime(selectedSpot.checkOutTime)" class="flex-1 w-full min-w-0 bg-white border border-slate-200 shadow-sm rounded-lg px-1 py-2 text-xs font-bold outline-none text-center font-sans tracking-wider placeholder:text-slate-300 placeholder:font-normal placeholder:tracking-normal border-[#9E0E26]/30">
                                     </div>
                                 </div>
                                 <div class="flex space-x-3">
@@ -2259,7 +2281,7 @@
                                     <input type="text" v-model.trim="tripInfo.aiApiKey" placeholder="AIza…（有填就直接用這把，不經過 AI Logic）" autocomplete="off" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2 text-[12px] font-sans outline-none">
                                     <p v-if="!sync.enabled && !tripInfo.aiApiKey" class="text-[11px] font-bold text-[#9E0E26] mt-2">要先開啟上面的「雲端同步」，或填入 Gemini API 金鑰</p>
                                     <p v-else class="text-[10px] font-bold text-slate-400 mt-2">金鑰會同步給旅伴，旅伴不用再設定。</p>
-                                    <p class="text-[10px] font-bold text-slate-300 mt-1 font-sans">App 版本 39</p>
+                                    <p class="text-[10px] font-bold text-slate-300 mt-1 font-sans">App 版本 40</p>
                                 </div>
                             </div>
 
@@ -5148,6 +5170,21 @@
                     }
                     return '';
                 },
+                timeRange(a, b) {
+                    a = (a || '').trim(); b = (b || '').trim();
+                    if (a && b) return `${a}–${b}`;
+                    if (a) return `${a} 起`;
+                    if (b) return `${b} 前`;
+                    return '';
+                },
+                hotelArrivalNote(sp) {
+                    if (!sp || sp.type !== 'hotel' || !sp.startTime) return null;
+                    const m = t => { const x = /^(\d{1,2}):(\d{2})$/.exec(t || ''); return x ? +x[1] * 60 + +x[2] : null; };
+                    const t = m(sp.startTime), a = m(sp.checkInTime), b = m(sp.checkInEnd);
+                    if (b != null && t != null && t > b) return { bad: true, text: `比最晚入住 ${sp.checkInEnd} 還晚，記得先通知飯店` };
+                    if (a != null && t != null && t < a) return { bad: false, text: `比可入住時間 ${sp.checkInTime} 早，可以先寄放行李` };
+                    return null;
+                },
                 getTimelineMainText(spot) {
                     if (!spot.startTime) {
                         if (spot.type === 'hotel') return '住宿';
@@ -5282,7 +5319,7 @@
                 openAddSpot() {
                     this.spotModalMode = 'add';
                     let initPayer = this.customPayers.length > 0 ? this.customPayers[0] : '';
-                    this.selectedSpot = { type: 'spot', startTime: '', endTime: '', durationH: '', durationM: '', name: '', desc: '', location: '', googleMapUrl: '', hours: '', warning: '', cost: '', currency: 'JPY', costCategory: '', payer: initPayer, paymentMethod: '現金', lat: null, lng: null, photoSpotDesc: '', coverImage: '', coverPosition: 50, tags: [], links: [], images: [], files: [], transitMethod: '地鐵', transitMethodCustom: '', airline: '', depAirport: '', arrAirport: '', depTerminal: '', arrTerminal: '', flightNo: '', seats: [{name:'', seat:''}], legs: [this.blankLeg('')], phone: '', transport: '', bookingRef: '', checkInDate: this.itinerary[this.activeDay] ? this.itinerary[this.activeDay].rawDate : '', checkOutDate: '', checkInTime: '', checkOutTime: '' };
+                    this.selectedSpot = { type: 'spot', startTime: '', endTime: '', durationH: '', durationM: '', name: '', desc: '', location: '', googleMapUrl: '', hours: '', warning: '', cost: '', currency: 'JPY', costCategory: '', payer: initPayer, paymentMethod: '現金', lat: null, lng: null, photoSpotDesc: '', coverImage: '', coverPosition: 50, tags: [], links: [], images: [], files: [], transitMethod: '地鐵', transitMethodCustom: '', airline: '', depAirport: '', arrAirport: '', depTerminal: '', arrTerminal: '', flightNo: '', seats: [{name:'', seat:''}], legs: [this.blankLeg('')], phone: '', transport: '', bookingRef: '', checkInDate: this.itinerary[this.activeDay] ? this.itinerary[this.activeDay].rawDate : '', checkOutDate: '', checkInTime: '', checkInEnd: '', checkOutStart: '', checkOutTime: '' };
                     this.resetPendingInputs();
                     this.showSpotModal = true;
                 },
