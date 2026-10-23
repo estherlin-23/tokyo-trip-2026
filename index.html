@@ -935,7 +935,11 @@
                             <div class="flex items-center justify-between mb-4">
                                 <div class="flex items-center"><span class="w-8 h-8 rounded-lg bg-[#EAF3F9] text-[#1E4E79] flex items-center justify-center mr-2.5 shrink-0"><i class="fa-solid fa-hand-holding-dollar text-[13px]"></i></span><div><p class="text-[15px] font-bold text-slate-800 leading-tight">分帳結算</p><p class="text-[10px] font-bold text-slate-400">依「墊付」紀錄計算，已互相抵銷</p></div></div>
                             </div>
-                            <div v-if="settlement.results.length" class="space-y-2.5">
+                            <div v-if="settlement.results.length || settlement.details.length" class="space-y-2.5">
+                                <div v-if="!settlement.results.length" class="text-center py-4 rounded-xl bg-[#ECFDF5] border border-[#A7F3D0]">
+                                    <p class="text-[13px] font-bold text-[#047857]"><i class="fa-solid fa-circle-check mr-1"></i>目前都還清了！</p>
+                                </div>
+                                <p v-if="settlement.paidCount" class="text-[10px] font-bold text-slate-400 px-1">已還款 {{ settlement.paidCount }} 筆（NT${{ formatCurrency(Math.round(settlement.paidNtd)) }}），不再計算</p>
                                 <div v-for="(r, ri) in settlement.results" :key="'st'+ri" class="rounded-xl bg-slate-50 border border-slate-100 px-3.5 py-3">
                                     <div class="flex items-center">
                                         <div class="flex-1 min-w-0 pr-3">
@@ -948,22 +952,27 @@
                                             <p class="text-[10px] font-bold text-slate-400 font-sans">≈ ¥{{ formatCurrency(Math.round(r.ntd / exchangeRateJPYtoTWD)) }}</p>
                                         </div>
                                     </div>
+                                    <button type="button" @click.stop="settlePair(r)" class="mt-2.5 w-full text-[11px] font-bold py-1.5 rounded-lg bg-white border border-slate-200 text-slate-500 active:scale-[0.98]"><i class="fa-solid fa-check mr-1"></i>已經還清了</button>
                                 </div>
                                 <button type="button" @click="showSettleDetail = !showSettleDetail" class="w-full text-[11px] font-bold text-slate-500 py-1.5 active:opacity-60">
-                                    {{ showSettleDetail ? '收合明細' : '查看每筆墊付明細（' + settlement.details.length + ' 筆）' }} <i class="fa-solid text-[9px] ml-1" :class="showSettleDetail ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+                                    {{ showSettleDetail ? '收合明細' : '查看每筆墊付明細（' + settlement.details.length + ' 筆，可勾已還）' }} <i class="fa-solid text-[9px] ml-1" :class="showSettleDetail ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
                                 </button>
                                 <div v-if="showSettleDetail" class="rounded-xl border border-slate-100 divide-y divide-slate-100">
-                                    <button type="button" v-for="(d, di) in settlement.details" :key="'sd'+di" @click="jumpToSpot(d.dayIdx, d.spotIdx)" class="w-full text-left flex items-center px-3 py-2.5 active:bg-slate-50">
+                                    <div v-for="(d, di) in settlement.details" :key="'sd'+di" @click="jumpToSpot(d.dayIdx, d.spotIdx)" class="w-full text-left flex items-center px-3 py-2.5 active:bg-slate-50 cursor-pointer" :class="d.paid ? 'opacity-50' : ''">
+                                        <button type="button" @click.stop="toggleSettleDetailPaid(d)" class="w-[18px] h-[18px] rounded-[5px] border-[1.5px] flex items-center justify-center shrink-0 mr-2.5" title="已還"
+                                                :style="d.paid ? { backgroundColor: '#059669', borderColor: '#059669' } : { borderColor: '#CBD5E1', backgroundColor: '#fff' }">
+                                            <i v-if="d.paid" class="fa-solid fa-check text-[9px] text-white"></i>
+                                        </button>
                                         <span class="w-[40px] shrink-0 text-[10px] font-bold text-slate-400 font-sans">{{ d.date }}</span>
                                         <span class="flex-1 min-w-0">
                                             <span class="block text-[12px] font-bold text-slate-700 truncate">{{ d.name }}</span>
-                                            <span class="block text-[10px] font-bold text-slate-400 truncate">{{ d.to }} 幫 {{ d.from }} 墊付</span>
+                                            <span class="block text-[10px] font-bold text-slate-400 truncate">{{ d.to }} 幫 {{ d.from }} 墊付<span v-if="d.paid" class="text-[#047857] ml-1">・已還</span></span>
                                         </span>
                                         <span class="text-right shrink-0 ml-2">
                                             <span class="block text-[12px] font-bold text-slate-700 font-sans">{{ d.currency === 'JPY' ? '¥' : 'NT$' }}{{ formatCurrency(d.orig) }}</span>
                                             <span v-if="d.currency === 'JPY'" class="block text-[10px] font-bold text-slate-400 font-sans">≈ NT${{ formatCurrency(Math.round(d.ntd)) }}</span>
                                         </span>
-                                    </button>
+                                    </div>
                                 </div>
                             </div>
                             <div v-else class="text-center py-6 text-slate-400">
@@ -1054,7 +1063,7 @@
                             <span class="w-8 h-8 rounded-lg bg-[#EAF3F9] text-[#1E4E79] flex items-center justify-center mr-2.5 shrink-0"><i class="fa-solid fa-receipt text-[13px]"></i></span>
                             <div class="flex-1 min-w-0">
                                 <p class="text-[15px] font-bold text-slate-800 leading-tight">收據辨識</p>
-                                <p class="text-[10px] font-bold text-slate-400">{{ receipt.phase === 'review' ? '確認一下品項和金額，可以直接修改' : 'AI 會讀出品項、價格和總額' }}<span class="text-slate-300 font-sans ml-1">v40</span></p>
+                                <p class="text-[10px] font-bold text-slate-400">{{ receipt.phase === 'review' ? '確認一下品項和金額，可以直接修改' : 'AI 會讀出品項、價格和總額' }}<span class="text-slate-300 font-sans ml-1">v41</span></p>
                             </div>
                             <button type="button" @click.stop="closeReceipt" class="w-8 h-8 bg-slate-100 rounded-full text-slate-500 flex justify-center items-center shrink-0"><i class="fa-solid fa-xmark text-sm"></i></button>
                         </div>
@@ -1511,8 +1520,13 @@
                                             </div>
                                             <div v-if="selectedSpot.isAdvance && selectedSpot.advances && selectedSpot.advances.length" class="mt-2 ml-5 rounded-lg px-2.5 py-2" :style="{ backgroundColor: currentTheme.soft }">
                                                 <p class="text-[10px] font-bold mb-1" :style="{ color: currentTheme.text }"><i class="fa-solid fa-hand-holding-dollar mr-1"></i>{{ selectedSpot.payer }} 先墊付</p>
-                                                <div v-for="a in selectedSpot.advances" :key="'va'+a.person" class="flex justify-between text-[12px] font-bold text-slate-600 py-0.5">
-                                                    <span>{{ a.person }} 要還</span><span class="font-sans">{{ selectedSpot.currency === 'JPY' ? '¥' : 'NT$' }}{{ formatCurrency(a.amount) }}</span>
+                                                <div v-for="a in selectedSpot.advances" :key="'va'+a.person" class="flex items-center text-[12px] font-bold py-1" :class="a.paid ? 'text-slate-400' : 'text-slate-600'">
+                                                    <span class="flex-1 min-w-0 truncate">{{ a.person }} {{ a.paid ? '已還' : '要還' }}</span>
+                                                    <span class="font-sans" :class="a.paid ? 'line-through' : ''">{{ selectedSpot.currency === 'JPY' ? '¥' : 'NT$' }}{{ formatCurrency(a.amount) }}</span>
+                                                    <button type="button" @click.stop="toggleAdvancePaidInView(a.person)" class="ml-2 shrink-0 text-[10px] font-bold rounded-md px-1.5 py-0.5 border flex items-center"
+                                                            :style="a.paid ? { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0', color: '#047857' } : { backgroundColor: '#fff', borderColor: '#E2E8F0', color: '#94A3B8' }">
+                                                        <span class="w-3 h-3 rounded-[3px] border mr-1 flex items-center justify-center" :style="a.paid ? { borderColor: '#059669', backgroundColor: '#059669' } : { borderColor: '#CBD5E1' }"><i v-if="a.paid" class="fa-solid fa-check text-[7px] text-white"></i></span>已還
+                                                    </button>
                                                 </div>
                                             </div>
                                             <div v-if="selectedSpot.receipts && selectedSpot.receipts.length" class="mt-2 ml-5 space-y-2">
@@ -1807,7 +1821,11 @@
                                                 <span class="flex-1 min-w-0 text-[13px] font-bold text-slate-700 truncate">{{ person }}</span>
                                                 <span class="text-[11px] font-bold text-slate-300 mr-1">{{ selectedSpot.currency === 'JPY' ? '¥' : 'NT$' }}</span>
                                                 <input type="text" inputmode="decimal" :value="getAdvance(person)" @input="setAdvance(person, $event.target.value)" placeholder="0"
-                                                       class="w-[78px] text-right text-[13px] font-bold font-sans text-slate-700 bg-slate-50 border border-slate-100 rounded-md px-2 py-1 outline-none">
+                                                       class="w-[78px] text-right text-[13px] font-bold font-sans bg-slate-50 border border-slate-100 rounded-md px-2 py-1 outline-none" :class="isAdvancePaid(person) ? 'text-slate-300 line-through' : 'text-slate-700'">
+                                                <button v-if="hasAdvance(person)" type="button" @click.stop="toggleAdvancePaid(person)" class="ml-1.5 shrink-0 text-[10px] font-bold rounded-md px-1.5 py-1 border flex items-center"
+                                                        :style="isAdvancePaid(person) ? { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0', color: '#047857' } : { backgroundColor: '#fff', borderColor: '#E2E8F0', color: '#94A3B8' }">
+                                                    <span class="w-3 h-3 rounded-[3px] border mr-1 flex items-center justify-center" :style="isAdvancePaid(person) ? { borderColor: '#059669', backgroundColor: '#059669' } : { borderColor: '#CBD5E1' }"><i v-if="isAdvancePaid(person)" class="fa-solid fa-check text-[7px] text-white"></i></span>已還
+                                                </button>
                                             </div>
                                         </div>
                                         <p v-else class="text-[11px] font-bold text-slate-400 bg-slate-50 rounded-lg p-2.5">還沒有其他同行者。在「付款人」選單選「＋ 新增同行者」加入旅伴的名字。</p>
@@ -2281,7 +2299,7 @@
                                     <input type="text" v-model.trim="tripInfo.aiApiKey" placeholder="AIza…（有填就直接用這把，不經過 AI Logic）" autocomplete="off" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2 text-[12px] font-sans outline-none">
                                     <p v-if="!sync.enabled && !tripInfo.aiApiKey" class="text-[11px] font-bold text-[#9E0E26] mt-2">要先開啟上面的「雲端同步」，或填入 Gemini API 金鑰</p>
                                     <p v-else class="text-[10px] font-bold text-slate-400 mt-2">金鑰會同步給旅伴，旅伴不用再設定。</p>
-                                    <p class="text-[10px] font-bold text-slate-300 mt-1 font-sans">App 版本 40</p>
+                                    <p class="text-[10px] font-bold text-slate-300 mt-1 font-sans">App 版本 41</p>
                                 </div>
                             </div>
 
@@ -3103,11 +3121,12 @@
                             const amt = parseFloat(String(a.amount || '').replace(/[^\d.]/g, '')) || 0;
                             if (!amt || !a.person || a.person === sp.payer) return;
                             const ntd = sp.currency === 'JPY' ? amt * this.exchangeRateJPYtoTWD : amt;
-                            details.push({ from: a.person, to: sp.payer, orig: amt, ntd, currency: sp.currency, name: sp.name || '未命名', date: day.shortDate, dayIdx: dIdx, spotIdx: sIdx });
+                            details.push({ from: a.person, to: sp.payer, orig: amt, ntd, currency: sp.currency, name: sp.name || '未命名', date: day.shortDate, dayIdx: dIdx, spotIdx: sIdx, paid: !!a.paid });
                         });
                     }));
                     const net = {};
                     details.forEach(d => {
+                        if (d.paid) return;   // 已經還過的不再計算
                         const [x, y] = [d.from, d.to].sort();
                         const k = x + '\u0000' + y;
                         net[k] = (net[k] || 0) + (d.from === x ? d.ntd : -d.ntd);
@@ -3116,7 +3135,8 @@
                         const [x, y] = k.split('\u0000'); const v = net[k];
                         return v > 0 ? { from: x, to: y, ntd: v } : { from: y, to: x, ntd: -v };
                     }).filter(r => Math.round(r.ntd) > 0).sort((a, b) => b.ntd - a.ntd);
-                    return { results, details };
+                    const paidNtd = details.filter(d => d.paid).reduce((t, d) => t + d.ntd, 0);
+                    return { results, details, paidNtd, paidCount: details.filter(d => d.paid).length };
                 },
                 syncStatusText() {
                     const st = this.sync.status;
@@ -4845,6 +4865,45 @@
                     if (this.selectedSpot.isAdvance && this.selectedSpot.advances.length === 0 && this.advanceCandidates.length === 1) {
                         this.selectedSpot.advances.push({ person: this.advanceCandidates[0], amount: '' });
                     }
+                },
+                // 墊付：標記已還款（已還的不再算進分帳結算）
+                isAdvancePaid(person) { const a = (this.selectedSpot.advances || []).find(x => x.person === person); return !!(a && a.paid); },
+                toggleAdvancePaid(person) {
+                    const a = (this.selectedSpot.advances || []).find(x => x.person === person);
+                    if (!a) return;
+                    a.paid = !a.paid;
+                    if (a.paid) a.paidAt = new Date().toISOString().slice(0, 10); else delete a.paidAt;
+                },
+                // 詳細頁直接勾：同時更新畫面與行程資料
+                toggleAdvancePaidInView(person) {
+                    this.toggleAdvancePaid(person);
+                    const day = this.itinerary[this.activeDay];
+                    const spot = day && day.spots[this.selectedSpotIndex];
+                    const cur = (this.selectedSpot.advances || []).find(x => x.person === person);
+                    if (spot && spot !== this.selectedSpot && cur) {
+                        const a = (spot.advances || []).find(x => x.person === person);
+                        if (a) { a.paid = cur.paid; if (cur.paid) a.paidAt = cur.paidAt; else delete a.paidAt; }
+                    }
+                },
+                // 分帳結算頁：直接勾某一筆已還
+                toggleSettleDetailPaid(d) {
+                    const sp = this.itinerary[d.dayIdx] && this.itinerary[d.dayIdx].spots[d.spotIdx];
+                    const a = sp && (sp.advances || []).find(x => x.person === d.from);
+                    if (!a) return;
+                    a.paid = !a.paid;
+                    if (a.paid) a.paidAt = new Date().toISOString().slice(0, 10); else delete a.paidAt;
+                },
+                // 兩人之間全部結清
+                settlePair(r) {
+                    if (!confirm(`${r.from} 已經把 NT$${this.formatCurrency(Math.round(r.ntd))} 還給 ${r.to} 了嗎？\n兩人之間目前所有的墊付都會標記成「已還」。`)) return;
+                    this.itinerary.forEach(day => (day.spots || []).forEach(sp => {
+                        if (!sp.isAdvance || !Array.isArray(sp.advances)) return;
+                        sp.advances.forEach(a => {
+                            if (a.paid) return;
+                            if ((a.person === r.from && sp.payer === r.to) || (a.person === r.to && sp.payer === r.from)) { a.paid = true; a.paidAt = new Date().toISOString().slice(0, 10); }
+                        });
+                    }));
+                    this.showToast(`已結清 ${r.from} ↔ ${r.to}`);
                 },
                 hasAdvance(person) { return (this.selectedSpot.advances || []).some(a => a.person === person); },
                 getAdvance(person) { const a = (this.selectedSpot.advances || []).find(x => x.person === person); return a ? a.amount : ''; },
