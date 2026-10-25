@@ -1062,6 +1062,22 @@
                     </div>
                 </div>
 
+                <!-- 🖼 照片全螢幕檢視 -->
+                <div v-if="lightbox.open" class="fixed inset-0 z-[97] bg-black flex flex-col select-none">
+                    <div class="flex items-center justify-between px-4 pt-[max(env(safe-area-inset-top),12px)] pb-2 text-white shrink-0">
+                        <span class="text-[12px] font-bold font-sans opacity-80">{{ lightbox.idx + 1 }} / {{ lightbox.list.length }}</span>
+                        <button type="button" @click="lightbox.open = false" class="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                    <div ref="lbScroll" class="flex-1 flex overflow-x-auto snap-x snap-mandatory hide-scrollbar" @scroll="onLightboxScroll">
+                        <div v-for="(im, li) in lightbox.list" :key="'lb'+li" class="w-full h-full shrink-0 snap-center flex items-center justify-center px-2">
+                            <img v-if="im.url" :src="im.url" class="max-w-full max-h-full object-contain rounded-md" draggable="false">
+                        </div>
+                    </div>
+                    <div class="px-5 pt-3 pb-[max(env(safe-area-inset-bottom),16px)] min-h-[64px] shrink-0">
+                        <p v-if="lightbox.list[lightbox.idx] && lightbox.list[lightbox.idx].desc" class="text-white text-[13px] font-bold leading-relaxed"><i class="fa-solid fa-camera mr-1.5 opacity-70"></i>{{ lightbox.list[lightbox.idx].desc }}</p>
+                    </div>
+                </div>
+
                 <!-- 📷 收據辨識 Modal -->
                 <div v-if="receipt.open" class="fixed inset-0 z-[85] flex items-end sm:items-center justify-center bg-slate-900/60 backdrop-blur-sm">
                     <div class="bg-white w-full max-w-[430px] rounded-t-3xl sm:rounded-3xl shadow-2xl animate-slide-up flex flex-col max-h-[90vh] overflow-hidden">
@@ -1069,7 +1085,7 @@
                             <span class="w-8 h-8 rounded-lg bg-[#EAF3F9] text-[#1E4E79] flex items-center justify-center mr-2.5 shrink-0"><i class="fa-solid fa-receipt text-[13px]"></i></span>
                             <div class="flex-1 min-w-0">
                                 <p class="text-[15px] font-bold text-slate-800 leading-tight">收據辨識</p>
-                                <p class="text-[10px] font-bold text-slate-400">{{ receipt.phase === 'review' ? '確認一下品項和金額，可以直接修改' : 'AI 會讀出品項、價格和總額' }}<span class="text-slate-300 font-sans ml-1">v42</span></p>
+                                <p class="text-[10px] font-bold text-slate-400">{{ receipt.phase === 'review' ? '確認一下品項和金額，可以直接修改' : 'AI 會讀出品項、價格和總額' }}<span class="text-slate-300 font-sans ml-1">v43</span></p>
                             </div>
                             <button type="button" @click.stop="closeReceipt" class="w-8 h-8 bg-slate-100 rounded-full text-slate-500 flex justify-center items-center shrink-0"><i class="fa-solid fa-xmark text-sm"></i></button>
                         </div>
@@ -1325,10 +1341,11 @@
                             
                             <!-- 📸 沉浸式照片畫廊 -->
                             <div v-if="selectedSpot.images && selectedSpot.images.length > 0" class="w-full relative bg-black">
-                                <div class="photo-gallery hide-scrollbar h-64 relative" id="photo-gallery-container" @scroll="updateActivePhotoIndex">
+                                <div class="photo-gallery hide-scrollbar h-72 relative" id="photo-gallery-container" @scroll="updateActivePhotoIndex">
                                     <template v-for="(imgObj, idx) in formattedImagesForGallery" :key="idx">
-                                        <div class="w-full h-full flex-shrink-0 relative snap-start">
-                                            <img :src="imgObj.url" :style="{ objectPosition: '50% ' + (imgObj.pos || 50) + '%' }" class="w-full h-full object-cover">
+                                        <div class="w-full h-full flex-shrink-0 relative snap-start overflow-hidden" @click="openLightbox(formattedImagesForGallery, idx)">
+                                            <img v-if="imgObj.url" :src="imgObj.url" class="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-60" aria-hidden="true">
+                                            <img v-if="imgObj.url" :src="imgObj.url" class="relative w-full h-full object-contain cursor-zoom-in">
                                             <div v-if="imgObj.desc" class="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/80 via-black/40 to-transparent p-3 pt-8 pb-6 text-white text-[11px] font-bold flex items-start">
                                                 <i class="fa-solid fa-camera mr-2 mt-0.5 opacity-80"></i> <span class="leading-relaxed drop-shadow-sm">{{ imgObj.desc }}</span>
                                             </div>
@@ -1592,6 +1609,18 @@
                                     </div>
                                 </div>
 
+                                <!-- 照片集・機位參考 -->
+                                <div v-if="formattedImagesForGallery.length > 1" class="bg-white rounded-2xl p-3 shadow-sm border border-slate-100 mt-4">
+                                    <p class="text-xs font-bold text-slate-400 tracking-wider mb-2 px-1"><i class="fa-solid fa-images mr-1"></i>照片集・機位參考</p>
+                                    <div class="columns-2 gap-2">
+                                        <div v-for="(imgObj, gi) in formattedImagesForGallery" :key="'gl'+gi" @click="openLightbox(formattedImagesForGallery, gi)" class="break-inside-avoid mb-2 rounded-xl overflow-hidden bg-slate-100 cursor-zoom-in">
+                                            <img v-if="imgObj.url" :src="imgObj.url" class="w-full h-auto block">
+                                            <div v-else class="w-full aspect-square flex items-center justify-center text-slate-300"><i class="fa-regular fa-image"></i></div>
+                                            <p v-if="imgObj.desc" class="text-[11px] font-bold text-slate-600 px-2 py-1.5 leading-snug bg-white">{{ imgObj.desc }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <!-- 附件檔案 -->                                <!-- 附件檔案 -->
                                 <div v-if="selectedSpot.files && selectedSpot.files.length > 0" class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 mt-4">
                                     <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">附件檔案</p>
@@ -1599,6 +1628,7 @@
                                         <div class="flex items-center min-w-0 flex-1">
                                             <i :class="'fa-solid ' + fileIcon(file) + ' text-[#3F7FB0] mr-2 shrink-0'"></i> 
                                             <span class="truncate">{{ file.name }}</span>
+                                            <span v-if="!file.url" class="text-[10px] font-bold text-[#B45309] ml-1.5 shrink-0">下載中…</span>
                                         </div>
                                         <span class="text-[11px] text-[#1A5F8A] ml-2 shrink-0"><i class="fa-regular fa-eye mr-1"></i>預覽</span>
                                     </button>
@@ -2120,22 +2150,31 @@
                                 </div>
 
                                 <div v-if="selectedSpot.images && selectedSpot.images.length" class="space-y-3">
-                                    <div v-for="(imgObj, idx) in selectedSpot.images" :key="'ph'+idx + (imgObj.pid || '')" class="rounded-xl overflow-hidden border border-slate-200 bg-slate-50">
-                                        <!-- 和行程卡片封面同比例：直接拖曳照片調整要露出的位置 -->
+                                    <!-- 封面：和行程卡片同比例，拖曳調整露出的位置 -->
+                                    <div v-if="editCoverImg" class="rounded-xl overflow-hidden border border-slate-200 bg-slate-50">
                                         <div class="relative w-full overflow-hidden bg-slate-200 select-none" style="aspect-ratio: 2.15 / 1; touch-action: none; cursor: grab;"
-                                             @pointerdown="startPhotoDrag($event, imgObj)" @pointermove="movePhotoDrag($event)" @pointerup="endPhotoDrag" @pointercancel="endPhotoDrag" @pointerleave="endPhotoDrag">
-                                            <img :src="imgObj.url || imgObj" :style="{ objectPosition: '50% ' + (imgObj.pos == null ? 50 : imgObj.pos) + '%' }" class="w-full h-full object-cover pointer-events-none" draggable="false">
-                                            <div v-if="photoDrag.obj === imgObj" class="absolute inset-0 pointer-events-none" style="background: linear-gradient(transparent 33%, rgba(255,255,255,.35) 33.3%, transparent 33.6%, transparent 66.4%, rgba(255,255,255,.35) 66.6%, transparent 67%);"></div>
-                                            <span class="absolute left-2 bottom-2 text-[10px] font-bold text-white bg-black/45 rounded-full px-2 py-1 pointer-events-none"><i class="fa-solid fa-up-down mr-1"></i>上下拖曳調整位置</span>
-                                            <span v-if="isCoverImage(imgObj)" class="absolute left-2 top-2 text-[10px] font-bold text-white rounded-full px-2 py-1 pointer-events-none" :style="{ backgroundColor: currentTheme.accent, color: currentTheme.onAccent }"><i class="fa-solid fa-star mr-1"></i>封面</span>
-                                        </div>
-                                        <div class="flex items-center gap-2 p-2">
-                                            <input type="text" v-model="imgObj.desc" placeholder="照片說明或機位（選填）" class="flex-1 min-w-0 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-[12px] outline-none focus:border-brand">
-                                            <button v-if="!isCoverImage(imgObj)" type="button" @click.stop="setCoverImage(imgObj)" class="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-400 flex items-center justify-center shrink-0" title="設為封面"><i class="fa-regular fa-star text-[12px]"></i></button>
-                                            <button type="button" @click.stop="imgObj.pos = 50" class="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-400 flex items-center justify-center shrink-0" title="置中"><i class="fa-solid fa-crosshairs text-[12px]"></i></button>
-                                            <button type="button" @click.stop="removeImage(idx)" class="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-red-400 flex items-center justify-center shrink-0" title="刪除"><i class="fa-regular fa-trash-can text-[12px]"></i></button>
+                                             @pointerdown="startPhotoDrag($event, editCoverImg)" @pointermove="movePhotoDrag($event)" @pointerup="endPhotoDrag" @pointercancel="endPhotoDrag" @pointerleave="endPhotoDrag">
+                                            <img :src="editCoverImg.url" :style="{ objectPosition: '50% ' + (editCoverImg.pos == null ? 50 : editCoverImg.pos) + '%' }" class="w-full h-full object-cover pointer-events-none" draggable="false">
+                                            <div v-if="photoDrag.obj === editCoverImg" class="absolute inset-0 pointer-events-none" style="background: linear-gradient(transparent 33%, rgba(255,255,255,.35) 33.3%, transparent 33.6%, transparent 66.4%, rgba(255,255,255,.35) 66.6%, transparent 67%);"></div>
+                                            <span class="absolute left-2 top-2 text-[10px] font-bold rounded-full px-2 py-1 pointer-events-none" :style="{ backgroundColor: currentTheme.accent, color: currentTheme.onAccent }"><i class="fa-solid fa-star mr-1"></i>卡片封面</span>
+                                            <span class="absolute left-2 bottom-2 text-[10px] font-bold text-white bg-black/45 rounded-full px-2 py-1 pointer-events-none"><i class="fa-solid fa-up-down mr-1"></i>上下拖曳調整封面範圍</span>
+                                            <button type="button" @pointerdown.stop @click.stop="editCoverImg.pos = 50" class="absolute right-2 bottom-2 w-7 h-7 rounded-full bg-black/45 text-white flex items-center justify-center" title="置中"><i class="fa-solid fa-crosshairs text-[11px]"></i></button>
                                         </div>
                                     </div>
+                                    <!-- 照片集：保留原本比例（直式長圖也完整顯示） -->
+                                    <div class="columns-2 gap-2">
+                                        <div v-for="(imgObj, idx) in selectedSpot.images" :key="'ph'+idx + (imgObj.pid || '')" class="break-inside-avoid mb-2 rounded-xl overflow-hidden border border-slate-200 bg-slate-50">
+                                            <div class="relative">
+                                                <img v-if="imgObj.url" :src="imgObj.url" @click.stop="openLightbox(selectedSpot.images, idx)" class="w-full h-auto block cursor-zoom-in" draggable="false">
+                                                <div v-else class="w-full aspect-square flex flex-col items-center justify-center text-slate-300 text-[10px] font-bold"><i class="fa-regular fa-image text-lg mb-1"></i>下載中…</div>
+                                                <span v-if="isCoverImage(imgObj)" class="absolute left-1.5 top-1.5 w-6 h-6 rounded-full flex items-center justify-center pointer-events-none" :style="{ backgroundColor: currentTheme.accent, color: currentTheme.onAccent }"><i class="fa-solid fa-star text-[10px]"></i></span>
+                                                <button v-else type="button" @click.stop="setCoverImage(imgObj)" class="absolute left-1.5 top-1.5 w-6 h-6 rounded-full bg-black/40 text-white flex items-center justify-center" title="設為封面"><i class="fa-regular fa-star text-[10px]"></i></button>
+                                                <button type="button" @click.stop="removeImage(idx)" class="absolute right-1.5 top-1.5 w-6 h-6 rounded-full bg-black/40 text-white flex items-center justify-center" title="刪除"><i class="fa-solid fa-xmark text-[10px]"></i></button>
+                                            </div>
+                                            <textarea v-model="imgObj.desc" rows="2" placeholder="說明／機位" class="w-full bg-white border-t border-slate-100 px-2 py-1.5 text-[11px] outline-none resize-none leading-snug block" @input="$event.target.style.height = 'auto'; $event.target.style.height = $event.target.scrollHeight + 'px'"></textarea>
+                                        </div>
+                                    </div>
+                                    <p class="text-[10px] font-bold text-slate-400 px-0.5">點照片可放大看全圖；☆ 設為卡片封面</p>
                                 </div>
                                 <label v-else class="w-full h-24 border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center text-slate-400 cursor-pointer">
                                     <i class="fa-regular fa-image text-xl mb-1"></i>
@@ -2231,7 +2270,7 @@
                                     <span class="text-xs font-bold">選擇檔案 (支援 PDF/圖片)</span>
                                     <input type="file" accept=".pdf,image/*" multiple @change="handleFileUpload" class="hidden">
                                 </label>
-                                <p class="text-[9px] text-slate-400 mt-2 leading-relaxed">提示：檔案將直接存在瀏覽器中，建議只上傳重要的票券或訂房確認單(PDF)，以免檔案過大導致網頁變慢。</p>
+                                <p class="text-[9px] text-slate-400 mt-2 leading-relaxed">提示：附件會同步給旅伴（開啟雲端同步時）。單檔建議 10MB 以內，太大的檔案會只存在這台裝置。</p>
                             </div>
                             
                             <div class="pt-2 pb-4">
@@ -2266,11 +2305,11 @@
                                         <button type="button" @click="pushSync(); connectSync()" class="text-[11px] font-bold text-slate-500 bg-slate-50 border border-slate-200 rounded-full px-2.5 py-1 active:scale-95"><i class="fa-solid fa-rotate mr-1"></i>立即同步</button>
                                     </div>
                                     <p v-if="sync.error" class="text-[11px] font-bold text-[#9E0E26] mt-2 leading-relaxed">{{ sync.error }}</p>
-                                    <p class="text-[11px] font-bold text-slate-400 mt-2 leading-relaxed">行程、花費、墊付、清單、照片都會同步（照片每台下載一次）；PDF 附件只存在各自手機。</p>
+                                    <p class="text-[11px] font-bold text-slate-400 mt-2 leading-relaxed">行程、花費、墊付、清單、照片和附件（PDF、圖片）都會同步，每台下載一次。</p>
                                     <div class="mt-2.5 rounded-xl bg-slate-50 border border-slate-100 px-3 py-2.5">
                                         <div class="flex items-center">
                                             <i class="fa-regular fa-image text-slate-400 text-[12px] mr-2"></i>
-                                            <span class="flex-1 text-[12px] font-bold text-slate-600">照片 <span class="font-sans">{{ photoCounts.have }}</span> 張<span v-if="photoCounts.missing" class="text-[#B45309]">・<span class="font-sans">{{ photoCounts.missing }}</span> 張等待下載</span></span>
+                                            <span class="flex-1 text-[12px] font-bold text-slate-600">照片與附件 <span class="font-sans">{{ photoCounts.have }}</span> 個<span v-if="photoCounts.missing" class="text-[#B45309]">・<span class="font-sans">{{ photoCounts.missing }}</span> 個等待下載</span></span>
                                             <button type="button" @click="resyncPhotos" :disabled="photoSync.busy" class="text-[11px] font-bold text-slate-600 bg-white border border-slate-200 rounded-full px-2.5 py-1 active:scale-95 disabled:opacity-50">
                                                 <i class="fa-solid fa-rotate mr-1" :class="{ 'animate-spin': photoSync.busy }"></i>重新同步照片
                                             </button>
@@ -2310,7 +2349,7 @@
                                     <input type="text" v-model.trim="tripInfo.aiApiKey" placeholder="AIza…（有填就直接用這把，不經過 AI Logic）" autocomplete="off" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2 text-[12px] font-sans outline-none">
                                     <p v-if="!sync.enabled && !tripInfo.aiApiKey" class="text-[11px] font-bold text-[#9E0E26] mt-2">要先開啟上面的「雲端同步」，或填入 Gemini API 金鑰</p>
                                     <p v-else class="text-[10px] font-bold text-slate-400 mt-2">金鑰會同步給旅伴，旅伴不用再設定。</p>
-                                    <p class="text-[10px] font-bold text-slate-300 mt-1 font-sans">App 版本 42</p>
+                                    <p class="text-[10px] font-bold text-slate-300 mt-1 font-sans">App 版本 43</p>
                                 </div>
                             </div>
 
@@ -2989,7 +3028,7 @@
                     },
                     saveTimeout: null, isStateLoaded: false,
                     sortableInstances: {},
-                    isDraggingSpot: false, justDraggedSpot: false, typingTodo: false, openRc: {}, photoSync: { busy: false, error: '', lastMsg: '' }, receipt: { open: false, phase: '', target: 'new', img: '', b64: '', error: '', errorDetail: '', split: false, splitWith: [], splitMode: 'even', splitAmounts: {}, data: null, amount: '', dayIdx: 0, spotIdx: -1, mode: 'new', category: '', payer: '', method: '信用卡', zoom: false }, swipe: { id: null, open: null, offset: 0, active: false }, undoDelete: null, justSwiped: false,
+                    isDraggingSpot: false, justDraggedSpot: false, typingTodo: false, lightbox: { open: false, list: [], idx: 0 }, openRc: {}, photoSync: { busy: false, error: '', lastMsg: '' }, receipt: { open: false, phase: '', target: 'new', img: '', b64: '', error: '', errorDetail: '', split: false, splitWith: [], splitMode: 'even', splitAmounts: {}, data: null, amount: '', dayIdx: 0, spotIdx: -1, mode: 'new', category: '', payer: '', method: '信用卡', zoom: false }, swipe: { id: null, open: null, offset: 0, active: false }, undoDelete: null, justSwiped: false,
                     showExpenseDetail: false, expenseDetailKey: '',
                     showSwapModal: false, toastMsg: '', showSettleDetail: false, airlineGroups: AIRLINE_GROUPS, photoDrag: { obj: null },
                     sync: { enabled: false, config: null, code: '', status: 'off', lastAt: 0, error: '', deviceId: '', joining: false }, syncConfigText: '', syncInviteText: '', isApplyingRemote: false,
@@ -3029,6 +3068,10 @@
                     return `${city}, ${country}`.toUpperCase();
                 },
                 
+                editCoverImg() {
+                    const imgs = (this.selectedSpot && this.selectedSpot.images) || [];
+                    return imgs.find(i => i && typeof i === 'object' && i.url && this.isCoverImage(i)) || null;
+                },
                 formattedImagesForGallery() {
                     if (!this.selectedSpot.images || this.selectedSpot.images.length === 0) {
                         if (this.selectedSpot.coverImage) return [{ url: this.selectedSpot.coverImage, pos: this.selectedSpot.coverPosition, desc: this.selectedSpot.photoSpotDesc }];
@@ -3100,6 +3143,7 @@
                     this.itinerary.forEach(d => {
                         if (d.hero && d.hero.pid) { if (d.hero.image) mine++; else missing++; }
                         (d.spots || []).forEach(sp => (sp.images || []).forEach(i => { if (i && i.pid) { if (i.url) mine++; else missing++; } }));
+                        (d.spots || []).forEach(sp => (sp.files || []).forEach(f => { if (f && f.fid) { if (f.url) mine++; else missing++; } }));
                     });
                     return { have: mine, missing };
                 },
@@ -3806,6 +3850,7 @@
                     });
                 },
                 async openFilePreview(file) {
+                    if (file && !file.url && file.fid) { this.showToast('附件還在從雲端下載，請稍等一下'); this.fetchMissingPhotos(); return; }
                     if (!file || !file.url) return;
                     this.filePreview = { name: file.name || '附件', url: file.url, kind: this.fileKind(file) };
                     this.filePreviewZoom = 1;
@@ -4671,6 +4716,7 @@
                         this.itinerary.forEach(d => {
                             if (d.hero && d.hero.pid && /^data:/.test(d.hero.image || '')) up.delete(d.hero.pid);
                             (d.spots || []).forEach(sp => (sp.images || []).forEach(i => { if (i && i.pid && /^data:/.test(i.url || '')) up.delete(i.pid); }));
+                            (d.spots || []).forEach(sp => (sp.files || []).forEach(f => { if (f && f.fid && /^data:/.test(f.url || '')) up.delete(f.fid); }));
                         });
                         await this.uploadPendingPhotos();
                         this.schedulePush(100);
@@ -4692,6 +4738,20 @@
                         const h = d.hero;
                         if (h && h.pid && /^data:/.test(h.image || '') && !up.has(h.pid) && !todo.some(t => t.pid === h.pid)) todo.push({ pid: h.pid, url: h.image });
                     });
+                    // 附件：切塊上傳
+                    const ftodo = [];
+                    this.itinerary.forEach(d => (d.spots || []).forEach(sp => (sp.files || []).forEach(f => {
+                        if (f && f.fid && /^data:/.test(f.url || '') && !up.has(f.fid) && !ftodo.some(t => t.fid === f.fid)) ftodo.push(f);
+                    })));
+                    for (const f of ftodo) {
+                        if (f.url.length > 20 * 1024 * 1024) continue;   // 太大的檔案（約 15MB 以上）不上傳
+                        const n = fileChunks(f);
+                        try {
+                            for (let k = 0; k < n; k++) await _fbRef.collection('photos').doc(f.fid + '-c' + k).set({ d: f.url.slice(k * FILE_CHUNK, (k + 1) * FILE_CHUNK), n, t: Date.now() });
+                        } catch (e) { this.photoSync.error = this.photoErrorText(e); throw e; }
+                        up.add(f.fid);
+                    }
+                    if (ftodo.length) this.savePhotosUploaded();
                     for (const i of todo) {
                         if (i.url.length > 950000) continue;   // 單張太大就不傳（新上傳的照片都會先壓縮，正常不會超過）
                         try {
@@ -4710,7 +4770,9 @@
                     const need = new Set();
                     this.itinerary.forEach(d => (d.spots || []).forEach(sp => (sp.images || []).forEach(i => { if (i && i.pid && !i.url) need.add(i.pid); })));
                     this.itinerary.forEach(d => { if (d.hero && d.hero.pid && !d.hero.image) need.add(d.hero.pid); });
-                    if (!need.size) return;
+                    const fneed = [];
+                    this.itinerary.forEach(d => (d.spots || []).forEach(sp => (sp.files || []).forEach(f => { if (f && f.fid && !f.url && !fneed.some(x => x.fid === f.fid)) fneed.push({ fid: f.fid, n: f.n || 1 }); })));
+                    if (!need.size && !fneed.length) return;
                     _photoFetching = true;
                     try {
                         const up = this.photosUploadedSet();
@@ -4725,6 +4787,20 @@
                                 (sp.images || []).forEach(i => { if (i.pid === pid) i.url = url; });
                                 if (sp.coverPid === pid || (!sp.coverImage && sp.images && sp.images[0] && sp.images[0].pid === pid)) sp.coverImage = url;
                             }));
+                        }
+                        for (const f of fneed) {
+                            const parts = [];
+                            let ok = true;
+                            for (let k = 0; k < f.n; k++) {
+                                const snap = await _fbRef.collection('photos').doc(f.fid + '-c' + k).get();
+                                if (!snap.exists) { ok = false; break; }
+                                parts.push(snap.data().d);
+                            }
+                            if (!ok) continue;
+                            const url = parts.join('');
+                            up.add(f.fid);
+                            this.itinerary.forEach(d => (d.spots || []).forEach(sp => (sp.files || []).forEach(x => { if (x.fid === f.fid) x.url = url; })));
+                            if (this.selectedSpot && Array.isArray(this.selectedSpot.files)) this.selectedSpot.files.forEach(x => { if (x.fid === f.fid) x.url = url; });
                         }
                         this.savePhotosUploaded();
                     } catch (e) {
@@ -5964,6 +6040,16 @@
                     d.obj[d.key || 'pos'] = Math.round(Math.max(0, Math.min(100, d.start - dy / d.overflow * 100)));
                 },
                 endPhotoDrag() { this.photoDrag = { obj: null }; },
+                openLightbox(list, idx) {
+                    const arr = (list || []).map(i => typeof i === 'string' ? { url: i, desc: '' } : i).filter(Boolean);
+                    if (!arr.length) return;
+                    this.lightbox = { open: true, list: arr, idx: idx || 0 };
+                    this.$nextTick(() => { const el = this.$refs.lbScroll; if (el) el.scrollLeft = el.clientWidth * (idx || 0); });
+                },
+                onLightboxScroll(e) {
+                    const el = e.target;
+                    this.lightbox.idx = Math.max(0, Math.min(this.lightbox.list.length - 1, Math.round(el.scrollLeft / el.clientWidth)));
+                },
                 isCoverImage(imgObj) { return !!this.selectedSpot.coverImage && this.selectedSpot.coverImage === (imgObj.url || imgObj); },
                 setCoverImage(imgObj) {
                     this.selectedSpot.coverImage = imgObj.url || imgObj;
@@ -6326,6 +6412,8 @@
         });
         // ===== 雲端同步（Firebase）核心：把行程拆成一筆一筆，各自記「最後修改時間」，兩邊同時改也能合併 =====
         const SYNC_MEDIA_KEYS = ['images', 'files', 'coverImage'];
+        const FILE_CHUNK = 700000;   // 附件切成每塊 70 萬字元存雲端（單筆上限 1MB）
+        function fileChunks(f) { return Math.max(1, Math.ceil(String((f && f.url) || '').length / FILE_CHUNK)); }
         function syncStripSpot(sp) {
             const o = {};
             Object.keys(sp).forEach(k => { if (!SYNC_MEDIA_KEYS.includes(k) && k !== '_u') o[k] = sp[k]; });
@@ -6334,10 +6422,14 @@
             o.images = imgs.map(i => ({ pid: i.pid, pos: i.pos == null ? 50 : Number(i.pos), desc: i.desc || '' }));
             const cov = imgs.find(i => i.url && i.url === sp.coverImage);
             o.coverPid = cov ? cov.pid : (sp.coverPid || '');
+            // 附件：只同步「編號＋檔名＋分幾塊」，檔案內容另外分塊存
+            const fls = (sp.files || []).filter(f => f && f.fid);
+            o.files = fls.map(f => ({ fid: f.fid, name: f.name || '附件', n: f.url ? fileChunks(f) : (f.n || 1) }));
             return o;
         }
         // 每張照片給一個編號（舊照片也補上）
         function syncEnsurePhotoIds(st) {
+            (st.itinerary || []).forEach(d => (d.spots || []).forEach(sp => (sp.files || []).forEach(f => { if (f && !f.fid) f.fid = 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); })));
             (st.itinerary || []).forEach(d => { if (d.hero && /^data:/.test(d.hero.image || '') && !d.hero.pid) d.hero.pid = 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); });
             (st.itinerary || []).forEach(d => (d.spots || []).forEach(sp => {
                 if (!Array.isArray(sp.images)) return;
@@ -6390,10 +6482,11 @@
         function syncBuildState(doc, localState) {
             const items = doc.items || {};
             const get = (k) => { try { return items[k] ? JSON.parse(items[k].d) : null; } catch (e) { return null; } };
-            const media = {}, photoUrl = {};
+            const media = {}, photoUrl = {}, fileUrl = {};
             (localState.itinerary || []).forEach(d => (d.spots || []).forEach(sp => {
                 if (sp.id) { const m = {}; SYNC_MEDIA_KEYS.forEach(k => { if (sp[k] != null) m[k] = sp[k]; }); media[sp.id] = m; }
                 (sp.images || []).forEach(i => { if (i && i.pid && i.url) photoUrl[i.pid] = i.url; });
+                (sp.files || []).forEach(f => { if (f && f.fid && f.url) fileUrl[f.fid] = f.url; });
             }));
             const tripInfo = get('trip') || localState.tripInfo;
             const lists = get('lists') || {};
@@ -6403,7 +6496,13 @@
                 const sp = get(k); if (!sp) return;
                 const dayKey = sp.__day; delete sp.__day;
                 const remoteImgs = Array.isArray(sp.images) ? sp.images : null;
+                const remoteFiles = Array.isArray(sp.files) ? sp.files : null;
                 Object.assign(sp, { images: [], files: [], coverImage: '' }, media[sp.id] || {});
+                if (remoteFiles) {
+                    // 附件清單以雲端為準；檔案內容用這台已有的，沒有的稍後下載
+                    const localNoId = (sp.files || []).filter(f => f && !f.fid);
+                    sp.files = remoteFiles.map(r => ({ fid: r.fid, name: r.name, n: r.n || 1, url: fileUrl[r.fid] || '' })).concat(localNoId);
+                }
                 if (remoteImgs) {
                     // 照片清單以雲端為準；照片檔案用這台手機已有的，沒有的稍後下載
                     sp.images = remoteImgs.map(r => ({ pid: r.pid, pos: r.pos, desc: r.desc || '', url: photoUrl[r.pid] || '' }));
