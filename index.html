@@ -393,42 +393,37 @@
                             <!-- 時間軸 -->
                             <div class="px-3 pb-10">
                                 <!-- 📌 釘選：不屬於時間軸的項目（SIM 卡、票券、要先看的網站…） -->
-                                <div v-if="itinerary[activeDay].spots.some(x => x.pinned)" class="mb-5">
-                                    <div class="flex items-center justify-between px-1 mb-2">
-                                        <p class="text-[11px] font-bold tracking-wider" :style="{ color: currentTheme.text }"><i class="fa-solid fa-thumbtack mr-1.5 text-[10px]"></i>釘選</p>
-                                        <button type="button" @click="openAddSpot(true)" class="text-[11px] font-bold px-2 py-0.5 rounded-full active:scale-95" :style="{ color: currentTheme.text }"><i class="fa-solid fa-plus text-[9px] mr-1"></i>新增</button>
+                                <div v-if="itinerary[activeDay].spots.some(x => x.pinned)" class="mb-5 ml-[60px]">
+                                    <div class="flex items-center justify-between mb-1.5 pl-0.5">
+                                        <p class="text-[10px] font-bold tracking-widest text-slate-400"><i class="fa-solid fa-thumbtack mr-1 text-[9px]"></i>釘選</p>
+                                        <button type="button" @click="openAddSpot(true)" class="text-[10px] font-bold text-slate-400 active:opacity-60"><i class="fa-solid fa-plus text-[8px] mr-0.5"></i>新增</button>
                                     </div>
-                                    <div class="rounded-2xl overflow-hidden border divide-y" :style="{ backgroundColor: '#fff', borderColor: currentTheme.line }">
+                                    <div class="space-y-2">
                                         <template v-for="(spot, index) in itinerary[activeDay].spots" :key="'pin'+spot.id">
-                                            <div v-if="spot.pinned" @click="handleCardClick(index, $event)" class="flex items-start px-3.5 py-3 cursor-pointer active:bg-slate-50" :style="{ borderColor: currentTheme.line }">
-                                                <span class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mr-3" :style="{ backgroundColor: currentTheme.soft, color: getSpotColor(spot.type) }">
-                                                    <i class="fa-solid text-[13px]" :class="pinIcon(spot)"></i>
-                                                </span>
+                                            <div v-if="spot.pinned" @click="handleCardClick(index, $event)" class="bg-white rounded-xl border border-slate-100 shadow-sm px-3 py-2 flex items-center cursor-pointer active:scale-[0.99] transition-transform">
+                                                <i class="fa-solid text-[12px] w-5 text-center shrink-0 mr-2.5" :class="pinIcon(spot)" :style="{ color: getSpotColor(spot.type) }"></i>
                                                 <div class="flex-1 min-w-0">
-                                                    <div class="flex items-start">
-                                                        <p class="flex-1 min-w-0 text-[14px] font-bold text-slate-800 leading-snug break-words">{{ spot.name || '未命名' }}</p>
-                                                        <span v-if="spot.cost && spot.cost > 0" class="text-[13px] font-bold text-slate-700 font-sans ml-2 shrink-0">{{ costMain(spot) }}</span>
+                                                    <div class="flex items-center gap-2">
+                                                        <span class="text-[13px] font-bold text-slate-800 truncate">{{ spot.name || '未命名' }}</span>
+                                                        <span v-if="spot.isAdvance && spot.advances && spot.advances.length" class="text-[10px] font-bold px-1.5 py-[1px] rounded shrink-0" :style="{ backgroundColor: currentTheme.soft, color: currentTheme.text }"><i class="fa-solid fa-hand-holding-dollar mr-0.5"></i>{{ spot.payer }}</span>
                                                     </div>
-                                                    <p v-if="spot.desc" class="text-[12px] text-slate-500 leading-snug mt-0.5 line-clamp-2 whitespace-pre-wrap">{{ spot.desc }}</p>
-                                                    <div v-if="(spot.links && spot.links.length) || (spot.files && spot.files.length) || (spot.isAdvance && spot.advances && spot.advances.length) || spot.payer && spot.cost > 0" class="flex flex-wrap gap-1.5 mt-1.5">
-                                                        <span v-if="spot.isAdvance && spot.advances && spot.advances.length" class="inline-flex items-center text-[10px] font-bold px-1.5 py-[3px] rounded-md" :style="{ backgroundColor: currentTheme.soft, color: currentTheme.text }"><i class="fa-solid fa-hand-holding-dollar mr-1"></i>{{ spot.payer }} 墊付</span>
-                                                        <span v-else-if="spot.payer && spot.cost > 0" class="inline-flex items-center text-[10px] font-bold px-1.5 py-[3px] rounded-md bg-slate-50 text-slate-500"><i class="fa-regular fa-user mr-1"></i>{{ spot.payer }}</span>
+                                                    <p v-if="spot.desc" class="text-[11px] text-slate-400 truncate leading-tight mt-0.5">{{ spot.desc }}</p>
+                                                    <div v-if="(spot.links && spot.links.length) || (spot.files && spot.files.length)" class="flex flex-wrap gap-1 mt-1">
                                                         <a v-for="(link, lk) in spot.links" :key="'plk'+lk" :href="link.url" target="_blank" rel="noopener" @click.stop
-                                                           class="inline-flex items-center text-[10px] font-bold text-[#1A5F8A] bg-[#EAF3F9] border border-[#9CC3DD]/70 px-2 py-[3px] rounded-md max-w-full">
-                                                            <i class="fa-solid fa-link mr-1 text-[9px] shrink-0"></i><span class="truncate max-w-[150px]">{{ link.title }}</span>
+                                                           class="inline-flex items-center text-[10px] font-bold text-[#1A5F8A] bg-[#EAF3F9] px-1.5 py-[2px] rounded max-w-full">
+                                                            <i class="fa-solid fa-link mr-1 text-[8px] shrink-0"></i><span class="truncate max-w-[140px]">{{ link.title }}</span>
                                                         </a>
                                                         <button type="button" v-for="(file, fk) in spot.files" :key="'pfk'+fk" @click.stop="openFilePreview(file)"
-                                                           class="inline-flex items-center text-[10px] font-bold text-slate-600 bg-slate-50 border border-slate-200 px-2 py-[3px] rounded-md max-w-full">
-                                                            <i :class="'fa-solid ' + fileIcon(file) + ' mr-1 text-[9px] shrink-0 text-slate-400'"></i><span class="truncate max-w-[150px]">{{ file.name }}</span>
+                                                           class="inline-flex items-center text-[10px] font-bold text-slate-500 bg-slate-50 px-1.5 py-[2px] rounded max-w-full">
+                                                            <i :class="'fa-solid ' + fileIcon(file) + ' mr-1 text-[8px] shrink-0 text-slate-400'"></i><span class="truncate max-w-[140px]">{{ file.name }}</span>
                                                         </button>
                                                     </div>
                                                 </div>
-                                                <i class="fa-solid fa-chevron-right text-[10px] text-slate-300 ml-2 mt-1.5 shrink-0"></i>
+                                                <span v-if="spot.cost && spot.cost > 0" class="text-[12px] font-bold text-slate-600 font-sans ml-2 shrink-0">{{ costMain(spot) }}</span>
                                             </div>
                                         </template>
                                     </div>
                                 </div>
-                                <button v-else type="button" @click="openAddSpot(true)" class="w-full mb-3 rounded-xl border border-dashed border-slate-200 py-2 text-[11px] font-bold text-slate-400 active:bg-slate-50"><i class="fa-solid fa-thumbtack mr-1.5"></i>新增釘選項目（SIM 卡、票券、要先看的網站…）</button>
                                 <!-- 舊版的「當日備註」文字（有寫過才會顯示） -->
                                 <div v-if="tipsEditing" class="mb-4 rounded-2xl border p-3" :style="{ backgroundColor: currentTheme.soft, borderColor: currentTheme.line }">
                                     <textarea v-model="tipsDraft" rows="4" class="w-full bg-white rounded-xl border border-slate-200 px-3 py-2 text-[13px] text-slate-700 outline-none resize-y leading-relaxed"></textarea>
@@ -1156,7 +1151,7 @@
                             <span class="w-8 h-8 rounded-lg bg-[#EAF3F9] text-[#1E4E79] flex items-center justify-center mr-2.5 shrink-0"><i class="fa-solid fa-receipt text-[13px]"></i></span>
                             <div class="flex-1 min-w-0">
                                 <p class="text-[15px] font-bold text-slate-800 leading-tight">收據辨識</p>
-                                <p class="text-[10px] font-bold text-slate-400">{{ receipt.phase === 'review' ? '確認一下品項和金額，可以直接修改' : 'AI 會讀出品項、價格和總額' }}<span class="text-slate-300 font-sans ml-1">v45</span></p>
+                                <p class="text-[10px] font-bold text-slate-400">{{ receipt.phase === 'review' ? '確認一下品項和金額，可以直接修改' : 'AI 會讀出品項、價格和總額' }}<span class="text-slate-300 font-sans ml-1">v46</span></p>
                             </div>
                             <button type="button" @click.stop="closeReceipt" class="w-8 h-8 bg-slate-100 rounded-full text-slate-500 flex justify-center items-center shrink-0"><i class="fa-solid fa-xmark text-sm"></i></button>
                         </div>
@@ -2422,7 +2417,7 @@
                                     <input type="text" v-model.trim="tripInfo.aiApiKey" placeholder="AIza…（有填就直接用這把，不經過 AI Logic）" autocomplete="off" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2 text-[12px] font-sans outline-none">
                                     <p v-if="!sync.enabled && !tripInfo.aiApiKey" class="text-[11px] font-bold text-[#9E0E26] mt-2">要先開啟上面的「雲端同步」，或填入 Gemini API 金鑰</p>
                                     <p v-else class="text-[10px] font-bold text-slate-400 mt-2">金鑰會同步給旅伴，旅伴不用再設定。</p>
-                                    <p class="text-[10px] font-bold text-slate-300 mt-1 font-sans">App 版本 45</p>
+                                    <p class="text-[10px] font-bold text-slate-300 mt-1 font-sans">App 版本 46</p>
                                 </div>
                             </div>
 
