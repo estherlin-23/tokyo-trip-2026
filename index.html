@@ -400,8 +400,8 @@
                                     </div>
                                     <div class="space-y-2">
                                         <template v-for="(spot, index) in itinerary[activeDay].spots" :key="'pin'+spot.id">
-                                            <div v-if="spot.pinned" @click="handleCardClick(index, $event)" class="bg-white rounded-xl border border-slate-100 shadow-sm px-3 py-2 flex items-center cursor-pointer active:scale-[0.99] transition-transform">
-                                                <i class="fa-solid text-[12px] w-5 text-center shrink-0 mr-2.5" :class="pinIcon(spot)" :style="{ color: getSpotColor(spot.type) }"></i>
+                                            <div v-if="spot.pinned" @click="handleCardClick(index, $event)" class="bg-white rounded-xl border px-3 py-2 flex items-center cursor-pointer active:scale-[0.99] transition-transform" :style="{ borderColor: currentTheme.line }">
+                                                <i class="fa-solid text-[12px] w-5 text-center shrink-0 mr-2.5" :class="pinIcon(spot)" :style="{ color: currentTheme.accent }"></i>
                                                 <div class="flex-1 min-w-0">
                                                     <div class="flex items-center gap-2">
                                                         <span class="text-[13px] font-bold text-slate-800 truncate">{{ spot.name || '未命名' }}</span>
@@ -1151,7 +1151,7 @@
                             <span class="w-8 h-8 rounded-lg bg-[#EAF3F9] text-[#1E4E79] flex items-center justify-center mr-2.5 shrink-0"><i class="fa-solid fa-receipt text-[13px]"></i></span>
                             <div class="flex-1 min-w-0">
                                 <p class="text-[15px] font-bold text-slate-800 leading-tight">收據辨識</p>
-                                <p class="text-[10px] font-bold text-slate-400">{{ receipt.phase === 'review' ? '確認一下品項和金額，可以直接修改' : 'AI 會讀出品項、價格和總額' }}<span class="text-slate-300 font-sans ml-1">v46</span></p>
+                                <p class="text-[10px] font-bold text-slate-400">{{ receipt.phase === 'review' ? '確認一下品項和金額，可以直接修改' : 'AI 會讀出品項、價格和總額' }}<span class="text-slate-300 font-sans ml-1">v47</span></p>
                             </div>
                             <button type="button" @click.stop="closeReceipt" class="w-8 h-8 bg-slate-100 rounded-full text-slate-500 flex justify-center items-center shrink-0"><i class="fa-solid fa-xmark text-sm"></i></button>
                         </div>
@@ -2417,7 +2417,7 @@
                                     <input type="text" v-model.trim="tripInfo.aiApiKey" placeholder="AIza…（有填就直接用這把，不經過 AI Logic）" autocomplete="off" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2 text-[12px] font-sans outline-none">
                                     <p v-if="!sync.enabled && !tripInfo.aiApiKey" class="text-[11px] font-bold text-[#9E0E26] mt-2">要先開啟上面的「雲端同步」，或填入 Gemini API 金鑰</p>
                                     <p v-else class="text-[10px] font-bold text-slate-400 mt-2">金鑰會同步給旅伴，旅伴不用再設定。</p>
-                                    <p class="text-[10px] font-bold text-slate-300 mt-1 font-sans">App 版本 46</p>
+                                    <p class="text-[10px] font-bold text-slate-300 mt-1 font-sans">App 版本 47</p>
                                 </div>
                             </div>
 
