@@ -494,7 +494,8 @@
 
                                                 <!-- 地點・時間・花費（一行精簡） -->
                                                 <div v-if="(spot.location && spot.type !== 'transit') || (spot.hours && spot.type !== 'hotel' && spot.type !== 'transit') || (spot.cost && spot.cost > 0)" class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 mb-1 text-[11px] font-bold text-slate-500">
-                                                    <span v-if="spot.location && spot.type !== 'transit'" class="inline-flex items-center min-w-0 max-w-full"><i class="fa-solid fa-location-dot text-[10px] text-slate-300 mr-1"></i><span class="truncate">{{ spot.location }}</span></span>
+                                                    <a v-if="spot.location && spot.type !== 'transit'" :href="getSpotMapHref(spot)" target="_blank" rel="noopener" @click.stop class="inline-flex items-center min-w-0 max-w-full text-[#1A5F8A] active:opacity-60"><i class="fa-solid fa-location-dot text-[10px] mr-1 opacity-70"></i><span class="truncate underline decoration-[#1A5F8A]/30 underline-offset-2">{{ spot.location }}</span><i class="fa-solid fa-arrow-up-right-from-square text-[8px] ml-1 opacity-60 shrink-0"></i></a>
+                                                    <span v-if="spot.googleMapUrl && mapUrlWarning(spot)" class="inline-flex items-center text-[10px] font-bold text-[#9E0E26] bg-[#9E0E26]/5 rounded px-1.5 py-[1px]"><i class="fa-solid fa-triangle-exclamation mr-1"></i>地圖網址可能貼錯</span>
                                                     <span v-if="spot.hours && spot.type !== 'hotel' && spot.type !== 'transit'" class="inline-flex items-center font-sans"><i class="fa-regular fa-clock text-[10px] text-slate-300 mr-1"></i>{{ spot.hours }}</span>
                                                     <span v-if="spot.cost && spot.cost > 0" class="inline-flex items-center font-sans"><i class="fa-solid fa-wallet text-[10px] text-slate-300 mr-1"></i><span class="text-slate-600">{{ costMain(spot) }}</span><span v-if="costSub(spot)" class="text-slate-400 ml-1 font-normal">{{ costSub(spot) }}</span></span>
                                                     <span v-if="spot.isAdvance && spot.advances && spot.advances.length" class="inline-flex items-center text-[10px] px-1.5 py-[2px] rounded" :style="{ backgroundColor: currentTheme.soft, color: currentTheme.text }"><i class="fa-solid fa-hand-holding-dollar mr-1"></i>{{ spot.payer }} 墊付</span>
@@ -1151,7 +1152,7 @@
                             <span class="w-8 h-8 rounded-lg bg-[#EAF3F9] text-[#1E4E79] flex items-center justify-center mr-2.5 shrink-0"><i class="fa-solid fa-receipt text-[13px]"></i></span>
                             <div class="flex-1 min-w-0">
                                 <p class="text-[15px] font-bold text-slate-800 leading-tight">收據辨識</p>
-                                <p class="text-[10px] font-bold text-slate-400">{{ receipt.phase === 'review' ? '確認一下品項和金額，可以直接修改' : 'AI 會讀出品項、價格和總額' }}<span class="text-slate-300 font-sans ml-1">v47</span></p>
+                                <p class="text-[10px] font-bold text-slate-400">{{ receipt.phase === 'review' ? '確認一下品項和金額，可以直接修改' : 'AI 會讀出品項、價格和總額' }}<span class="text-slate-300 font-sans ml-1">v48</span></p>
                             </div>
                             <button type="button" @click.stop="closeReceipt" class="w-8 h-8 bg-slate-100 rounded-full text-slate-500 flex justify-center items-center shrink-0"><i class="fa-solid fa-xmark text-sm"></i></button>
                         </div>
@@ -1747,7 +1748,12 @@
                                     <label class="block text-xs font-bold text-blue-500 mb-1.5">Google Maps 位置（建議填，導航最準）</label>
                                     <textarea v-model="selectedSpot.googleMapUrl" rows="2" placeholder="可貼：Google Maps App「分享」的整段文字、完整網址，或座標（例 35.7312, 139.7289）" class="w-full min-w-0 bg-blue-50 border border-blue-200 shadow-sm rounded-xl px-3 py-2.5 text-[13px] font-bold outline-none focus:border-blue-400 resize-none leading-snug"></textarea>
                                     <div v-if="getMapFieldStatus(selectedSpot).kind === 'exact'" class="mt-1.5 text-[11px] font-bold text-[#1A5F8A] flex items-start">
-                                        <i class="fa-solid fa-circle-check mr-1.5 mt-[2px]"></i><span>已讀到精準座標 {{ getMapFieldStatus(selectedSpot).text }}，地圖與導航會用這個位置</span>
+                                        <i class="fa-solid fa-circle-check mr-1.5 mt-[2px]"></i><span>已讀到<span v-if="parsePlaceNameFromUrl(selectedSpot.googleMapUrl)">「{{ parsePlaceNameFromUrl(selectedSpot.googleMapUrl) }}」</span>精準座標 {{ getMapFieldStatus(selectedSpot).text }}</span>
+                                    </div>
+                                    <div v-if="mapUrlWarning(selectedSpot)" class="mt-1.5 text-[11px] font-bold text-[#9E0E26] bg-[#9E0E26]/5 border border-[#9E0E26]/20 rounded-lg p-2 leading-relaxed flex items-start">
+                                        <i class="fa-solid fa-triangle-exclamation mr-1.5 mt-[2px]"></i>
+                                        <span class="flex-1">{{ mapUrlWarning(selectedSpot) }}</span>
+                                        <button type="button" @click.stop="selectedSpot.googleMapUrl = ''" class="ml-2 shrink-0 underline">清空</button>
                                     </div>
                                     <div v-else-if="getMapFieldStatus(selectedSpot).kind === 'share'" class="mt-1.5 text-[11px] font-bold text-[#1A5F8A] flex items-start">
                                         <i class="fa-solid fa-circle-check mr-1.5 mt-[2px]"></i><span class="leading-snug">導航會用「{{ getMapFieldStatus(selectedSpot).text }}」搜尋</span>
@@ -2417,7 +2423,7 @@
                                     <input type="text" v-model.trim="tripInfo.aiApiKey" placeholder="AIza…（有填就直接用這把，不經過 AI Logic）" autocomplete="off" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2 text-[12px] font-sans outline-none">
                                     <p v-if="!sync.enabled && !tripInfo.aiApiKey" class="text-[11px] font-bold text-[#9E0E26] mt-2">要先開啟上面的「雲端同步」，或填入 Gemini API 金鑰</p>
                                     <p v-else class="text-[10px] font-bold text-slate-400 mt-2">金鑰會同步給旅伴，旅伴不用再設定。</p>
-                                    <p class="text-[10px] font-bold text-slate-300 mt-1 font-sans">App 版本 47</p>
+                                    <p class="text-[10px] font-bold text-slate-300 mt-1 font-sans">App 版本 48</p>
                                 </div>
                             </div>
 
@@ -4197,12 +4203,43 @@
                     if (pn) return { kind: 'share', text: pn };
                     return { kind: 'unknown' };
                 },
+                // 單一地點：只在 Google Maps 打開「這個地點」，不會變成路線導航、也不會打開照片／街景畫面
                 getSpotMapHref(spot) {
-                    const url = this.extractMapUrl(spot.googleMapUrl);
-                    if (url) return url;
-                    const c = this.parseLatLngFromUrl(spot.googleMapUrl);
+                    const v = String((spot && spot.googleMapUrl) || '');
+                    const url = this.extractMapUrl(v);
+                    if (url && this.isShortMapLink(url)) return url;   // App 分享的短網址本身就是地點頁
+                    const fid = this.parseFeatureIdFromUrl(v);
+                    const c = this.parseLatLngFromUrl(v);
+                    const pn = this.parsePlaceNameFromUrl(v);
+                    if (fid) {
+                        const name = encodeURIComponent(pn || spot.name || spot.location || 'place').replace(/%20/g, '+');
+                        const at = c ? `/@${c.lat},${c.lng},17z` : '';
+                        return `https://www.google.com/maps/place/${name}${at}/data=!4m2!3m1!1s${fid}`;
+                    }
                     if (c) return `https://www.google.com/maps/search/?api=1&query=${c.lat},${c.lng}`;
+                    if (pn) return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(pn)}`;
                     return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(this.getNavQuery(spot))}`;
+                },
+                // 貼上的網址防呆：網址裡的店名跟這個行程對不上、或跟別的行程重複時提醒
+                mapUrlWarning(spot) {
+                    const v = String((spot && spot.googleMapUrl) || '').trim();
+                    if (!v) return '';
+                    const pn = this.parsePlaceNameFromUrl(v);
+                    const norm = t => String(t || '').toLowerCase().replace(/[\s\-・･·,，.。()（）]/g, '');
+                    if (pn) {
+                        const a = norm(pn), hay = norm((spot.name || '') + (spot.location || ''));
+                        let hit = false;
+                        for (let i = 0; i + 2 <= a.length; i++) { if (hay.includes(a.slice(i, i + 2))) { hit = true; break; } }
+                        if (!hit && hay) return `網址裡的地點是「${pn}」，跟這個行程的名稱對不上，是不是貼到上一次複製的網址了？`;
+                    }
+                    const key = this.parseFeatureIdFromUrl(v) || v;
+                    let dup = '';
+                    this.itinerary.forEach(d => (d.spots || []).forEach(sp => {
+                        if (dup || sp === spot || (spot.id && sp.id === spot.id) || !sp.googleMapUrl) return;
+                        const k2 = this.parseFeatureIdFromUrl(sp.googleMapUrl) || String(sp.googleMapUrl).trim();
+                        if (k2 === key) dup = sp.name || '另一個行程';
+                    }));
+                    return dup ? `這個網址跟「${dup}」一模一樣，請確認是不是貼錯了` : '';
                 },
                 escapeHtml(str) {
                     return String(str == null ? '' : str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -4532,11 +4569,7 @@
                     const spot = this.itinerary[p.dayIdx] && this.itinerary[p.dayIdx].spots[p.spotIdx];
                     if (!spot) return;
                     // 貼的是完整地點網址 → 直接打開原網址，保證是同一個地點
-                    const url = this.extractMapUrl(spot.googleMapUrl);
-                    if (url && this.parseFeatureIdFromUrl(url)) { window.open(url, '_blank'); return; }
-                    const c = this.parseLatLngFromUrl(spot.googleMapUrl);
-                    const q = c ? `${c.lat},${c.lng}` : this.getNavQuery(spot);
-                    window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`, '_blank');
+                    window.open(this.getSpotMapHref(spot), '_blank');
                 },
 
                 // --- ECharts Expense Logic ---
