@@ -115,6 +115,17 @@
         .photo-gallery img { scroll-snap-align: start; flex-shrink: 0; width: 100%; height: 100%; object-fit: cover; }
 
         @keyframes slide-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .jgrid-wrap { container-type: inline-size; }
+        .jgrid { display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: calc((100cqw - 12px) / 3); gap: 6px; grid-auto-flow: dense; }
+        .jg-l { grid-column: span 2; grid-row: span 2; }
+        .jg-w { grid-column: span 2; }
+        .jg-t { grid-row: span 2; }
+        .jg-f { grid-column: span 3; grid-row: span 2; }
+        .jg-tile { position: relative; overflow: hidden; border-radius: 14px; background: #E2E8F0; }
+        .jg-tile img { width: 100%; height: 100%; object-fit: cover; display: block; -webkit-user-drag: none; }
+        .jgrid.sortable-dragging .jg-tile { transition: none; }
+        .jg-tile.sortable-ghost { opacity: .35; }
+        .tips-body a { color: #1A5F8A; text-decoration: underline; text-underline-offset: 2px; word-break: break-all; }
         .rc-label { display:block; font-size:10px; font-weight:700; color:#94A3B8; margin:0 0 4px 2px; }
         .rc-field { display:flex; align-items:center; width:100%; height:38px; padding:0 10px; border-radius:12px; border:1px solid #E2E8F0; background:#F8FAFC; font-size:12px; font-weight:700; color:#334155; outline:none; -webkit-appearance:none; appearance:none; overflow:hidden; min-width:0; text-overflow:ellipsis; }
         select.rc-field { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2394A3B8' stroke-width='1.6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 10px center; padding-right:24px; }
@@ -377,8 +388,25 @@
                                 </div>
                             </div>
 
-                            <!-- 完美時間軸佈局 (支援拖曳排序) -->
+                            <!-- 時間軸 -->
                             <div class="px-3 pb-10">
+                                <!-- 📌 當日備註（不在時間軸上） -->
+                                <div v-if="tipsEditing" class="mb-4 rounded-2xl border p-3" :style="{ backgroundColor: currentTheme.soft, borderColor: currentTheme.line }">
+                                    <p class="text-[11px] font-bold mb-2" :style="{ color: currentTheme.text }"><i class="fa-solid fa-thumbtack mr-1.5"></i>當日備註</p>
+                                    <textarea v-model="tipsDraft" rows="4" placeholder="TIPS、要先看的網站、特殊資訊…（網址會自動變成可點的連結）" class="w-full bg-white rounded-xl border border-slate-200 px-3 py-2 text-[13px] text-slate-700 outline-none resize-y leading-relaxed"></textarea>
+                                    <div class="flex justify-end gap-2 mt-2">
+                                        <button type="button" @click="tipsEditing = false" class="text-[12px] font-bold px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-500">取消</button>
+                                        <button type="button" @click="saveDayTips" class="text-[12px] font-bold px-3 py-1.5 rounded-lg" :style="{ backgroundColor: currentTheme.accent, color: currentTheme.onAccent }">儲存</button>
+                                    </div>
+                                </div>
+                                <div v-else-if="itinerary[activeDay].tips" @click="editDayTips" class="mb-4 rounded-2xl border px-3.5 py-3 cursor-pointer active:opacity-80" :style="{ backgroundColor: currentTheme.soft, borderColor: currentTheme.line }">
+                                    <div class="flex items-center mb-1.5">
+                                        <p class="flex-1 text-[11px] font-bold" :style="{ color: currentTheme.text }"><i class="fa-solid fa-thumbtack mr-1.5"></i>當日備註</p>
+                                        <i class="fa-solid fa-pen text-[10px] text-slate-400"></i>
+                                    </div>
+                                    <div class="text-[13px] text-slate-700 leading-relaxed whitespace-pre-wrap break-words tips-body" v-html="linkifyTips(itinerary[activeDay].tips)"></div>
+                                </div>
+                                <button v-else type="button" @click="editDayTips" class="w-full mb-3 rounded-xl border border-dashed border-slate-200 py-2 text-[11px] font-bold text-slate-400 active:bg-slate-50"><i class="fa-solid fa-thumbtack mr-1.5"></i>新增當日備註（TIPS、網站、特殊資訊）</button>
                                 <div v-if="hasCustomOrder(activeDay)" class="flex justify-end items-center mb-3">
                                     <button type="button" @click="autoSortCurrentDay" class="text-[10px] font-bold text-brand bg-slate-50 px-2 py-1 rounded border border-slate-200 shadow-sm active:scale-95 flex items-center">
                                         <i class="fa-solid fa-arrow-down-short-wide mr-1"></i> 按時間排序
@@ -1074,7 +1102,8 @@
                         </div>
                     </div>
                     <div class="px-5 pt-3 pb-[max(env(safe-area-inset-bottom),16px)] min-h-[64px] shrink-0">
-                        <p v-if="lightbox.list[lightbox.idx] && lightbox.list[lightbox.idx].desc" class="text-white text-[13px] font-bold leading-relaxed"><i class="fa-solid fa-camera mr-1.5 opacity-70"></i>{{ lightbox.list[lightbox.idx].desc }}</p>
+                        <textarea v-if="lightbox.editable && lightbox.list[lightbox.idx]" v-model="lightbox.list[lightbox.idx].desc" rows="2" placeholder="寫下說明或機位（例：站在橋中間往右拍）" class="w-full bg-white/10 text-white placeholder:text-white/40 rounded-xl px-3 py-2 text-[13px] font-bold outline-none resize-none border border-white/15"></textarea>
+                        <p v-else-if="lightbox.list[lightbox.idx] && lightbox.list[lightbox.idx].desc" class="text-white text-[13px] font-bold leading-relaxed"><i class="fa-solid fa-camera mr-1.5 opacity-70"></i>{{ lightbox.list[lightbox.idx].desc }}</p>
                     </div>
                 </div>
 
@@ -1085,7 +1114,7 @@
                             <span class="w-8 h-8 rounded-lg bg-[#EAF3F9] text-[#1E4E79] flex items-center justify-center mr-2.5 shrink-0"><i class="fa-solid fa-receipt text-[13px]"></i></span>
                             <div class="flex-1 min-w-0">
                                 <p class="text-[15px] font-bold text-slate-800 leading-tight">收據辨識</p>
-                                <p class="text-[10px] font-bold text-slate-400">{{ receipt.phase === 'review' ? '確認一下品項和金額，可以直接修改' : 'AI 會讀出品項、價格和總額' }}<span class="text-slate-300 font-sans ml-1">v43</span></p>
+                                <p class="text-[10px] font-bold text-slate-400">{{ receipt.phase === 'review' ? '確認一下品項和金額，可以直接修改' : 'AI 會讀出品項、價格和總額' }}<span class="text-slate-300 font-sans ml-1">v44</span></p>
                             </div>
                             <button type="button" @click.stop="closeReceipt" class="w-8 h-8 bg-slate-100 rounded-full text-slate-500 flex justify-center items-center shrink-0"><i class="fa-solid fa-xmark text-sm"></i></button>
                         </div>
@@ -1339,24 +1368,23 @@
                         <!-- ===== 模式：查看詳細 (無死角全顯示) ===== -->
                         <div v-if="spotModalMode === 'view'" class="overflow-y-auto overflow-x-hidden hide-scrollbar flex-1 relative bg-[#F4F6F8]">
                             
-                            <!-- 📸 沉浸式照片畫廊 -->
-                            <div v-if="selectedSpot.images && selectedSpot.images.length > 0" class="w-full relative bg-black">
-                                <div class="photo-gallery hide-scrollbar h-72 relative" id="photo-gallery-container" @scroll="updateActivePhotoIndex">
-                                    <template v-for="(imgObj, idx) in formattedImagesForGallery" :key="idx">
-                                        <div class="w-full h-full flex-shrink-0 relative snap-start overflow-hidden" @click="openLightbox(formattedImagesForGallery, idx)">
-                                            <img v-if="imgObj.url" :src="imgObj.url" class="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-60" aria-hidden="true">
-                                            <img v-if="imgObj.url" :src="imgObj.url" class="relative w-full h-full object-contain cursor-zoom-in">
-                                            <div v-if="imgObj.desc" class="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/80 via-black/40 to-transparent p-3 pt-8 pb-6 text-white text-[11px] font-bold flex items-start">
-                                                <i class="fa-solid fa-camera mr-2 mt-0.5 opacity-80"></i> <span class="leading-relaxed drop-shadow-sm">{{ imgObj.desc }}</span>
-                                            </div>
+                            <!-- 📸 照片（日誌風格：整齊格狀，點開看完整原圖） -->
+                            <div v-if="formattedImagesForGallery.length" class="bg-white px-3 pt-3 pb-1">
+                                <div v-if="formattedImagesForGallery.length === 1" class="rounded-2xl overflow-hidden bg-slate-100 cursor-zoom-in" @click="openLightbox(formattedImagesForGallery, 0)">
+                                    <img v-if="formattedImagesForGallery[0].url" :src="formattedImagesForGallery[0].url" class="w-full h-auto max-h-[420px] object-cover block">
+                                </div>
+                                <div v-else class="jgrid-wrap">
+                                    <div class="jgrid">
+                                        <div v-for="(imgObj, idx) in formattedImagesForGallery" :key="'vg'+idx" class="jg-tile cursor-zoom-in" :class="'jg-' + jgSize(formattedImagesForGallery, idx)" @click="openLightbox(formattedImagesForGallery, idx)">
+                                            <img v-if="imgObj.url" :src="imgObj.url" @load="noteRatio(imgObj, $event)" draggable="false">
+                                            <div v-else class="w-full h-full flex items-center justify-center text-slate-400"><i class="fa-regular fa-image"></i></div>
+                                            <span v-if="imgObj.desc" class="absolute left-1.5 bottom-1.5 w-5 h-5 rounded-full bg-black/45 text-white flex items-center justify-center pointer-events-none"><i class="fa-solid fa-camera text-[8px]"></i></span>
                                         </div>
-                                    </template>
+                                    </div>
                                 </div>
-                                <div v-if="formattedImagesForGallery.length > 1" class="absolute top-2 right-2 bg-black/50 text-white px-2 py-0.5 rounded-full text-[10px] font-bold backdrop-blur-sm z-10">
-                                    {{ activePhotoIndex + 1 }} / {{ formattedImagesForGallery.length }}
-                                </div>
+                                <p class="text-[10px] font-bold text-slate-400 text-center py-2">點照片看完整原圖<span v-if="formattedImagesForGallery.some(i => i.desc)">・<i class="fa-solid fa-camera text-[8px]"></i> 有機位說明</span></p>
                             </div>
-                            <div v-else-if="selectedSpot.photoSpotDesc" class="bg-white p-4 text-sm text-slate-600 flex items-start font-bold border-b border-slate-100">
+                            <div v-if="!formattedImagesForGallery.length && selectedSpot.photoSpotDesc" class="bg-white p-4 text-sm text-slate-600 flex items-start font-bold border-b border-slate-100">
                                 <i class="fa-solid fa-camera mr-2 mt-0.5 text-slate-400"></i> <span class="leading-relaxed">{{ selectedSpot.photoSpotDesc }}</span>
                             </div>
 
@@ -1605,18 +1633,6 @@
                                                     <span v-if="it.item.price" class="text-[12px] font-bold text-slate-500 font-sans ml-2 shrink-0">¥{{ Number(String(it.item.price).replace(/[^\d.]/g, '') || 0).toLocaleString() }}</span>
                                                 </div>
                                             </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- 照片集・機位參考 -->
-                                <div v-if="formattedImagesForGallery.length > 1" class="bg-white rounded-2xl p-3 shadow-sm border border-slate-100 mt-4">
-                                    <p class="text-xs font-bold text-slate-400 tracking-wider mb-2 px-1"><i class="fa-solid fa-images mr-1"></i>照片集・機位參考</p>
-                                    <div class="columns-2 gap-2">
-                                        <div v-for="(imgObj, gi) in formattedImagesForGallery" :key="'gl'+gi" @click="openLightbox(formattedImagesForGallery, gi)" class="break-inside-avoid mb-2 rounded-xl overflow-hidden bg-slate-100 cursor-zoom-in">
-                                            <img v-if="imgObj.url" :src="imgObj.url" class="w-full h-auto block">
-                                            <div v-else class="w-full aspect-square flex items-center justify-center text-slate-300"><i class="fa-regular fa-image"></i></div>
-                                            <p v-if="imgObj.desc" class="text-[11px] font-bold text-slate-600 px-2 py-1.5 leading-snug bg-white">{{ imgObj.desc }}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -2161,20 +2177,23 @@
                                             <button type="button" @pointerdown.stop @click.stop="editCoverImg.pos = 50" class="absolute right-2 bottom-2 w-7 h-7 rounded-full bg-black/45 text-white flex items-center justify-center" title="置中"><i class="fa-solid fa-crosshairs text-[11px]"></i></button>
                                         </div>
                                     </div>
-                                    <!-- 照片集：保留原本比例（直式長圖也完整顯示） -->
-                                    <div class="columns-2 gap-2">
-                                        <div v-for="(imgObj, idx) in selectedSpot.images" :key="'ph'+idx + (imgObj.pid || '')" class="break-inside-avoid mb-2 rounded-xl overflow-hidden border border-slate-200 bg-slate-50">
-                                            <div class="relative">
-                                                <img v-if="imgObj.url" :src="imgObj.url" @click.stop="openLightbox(selectedSpot.images, idx)" class="w-full h-auto block cursor-zoom-in" draggable="false">
-                                                <div v-else class="w-full aspect-square flex flex-col items-center justify-center text-slate-300 text-[10px] font-bold"><i class="fa-regular fa-image text-lg mb-1"></i>下載中…</div>
-                                                <span v-if="isCoverImage(imgObj)" class="absolute left-1.5 top-1.5 w-6 h-6 rounded-full flex items-center justify-center pointer-events-none" :style="{ backgroundColor: currentTheme.accent, color: currentTheme.onAccent }"><i class="fa-solid fa-star text-[10px]"></i></span>
+                                    <!-- 照片集：日誌風格格狀，長按拖曳排序，可指定每張的大小 -->
+                                    <div class="jgrid-wrap">
+                                        <div id="edit-jgrid" class="jgrid">
+                                            <div v-for="(imgObj, idx) in selectedSpot.images" :key="'ph' + (imgObj.pid || idx)" class="jg-tile" :class="'jg-' + jgSize(selectedSpot.images, idx)">
+                                                <img v-if="imgObj.url" :src="imgObj.url" @load="noteRatio(imgObj, $event)" @click.stop="openLightbox(selectedSpot.images, idx, true)" class="cursor-zoom-in" draggable="false">
+                                                <div v-else class="w-full h-full flex flex-col items-center justify-center text-slate-400 text-[10px] font-bold"><i class="fa-regular fa-image text-lg mb-1"></i>下載中…</div>
+                                                <span v-if="isCoverImage(imgObj)" class="absolute left-1.5 top-1.5 w-6 h-6 rounded-full flex items-center justify-center pointer-events-none shadow" :style="{ backgroundColor: currentTheme.accent, color: currentTheme.onAccent }"><i class="fa-solid fa-star text-[10px]"></i></span>
                                                 <button v-else type="button" @click.stop="setCoverImage(imgObj)" class="absolute left-1.5 top-1.5 w-6 h-6 rounded-full bg-black/40 text-white flex items-center justify-center" title="設為封面"><i class="fa-regular fa-star text-[10px]"></i></button>
                                                 <button type="button" @click.stop="removeImage(idx)" class="absolute right-1.5 top-1.5 w-6 h-6 rounded-full bg-black/40 text-white flex items-center justify-center" title="刪除"><i class="fa-solid fa-xmark text-[10px]"></i></button>
+                                                <button type="button" @click.stop="cycleImgSize(imgObj)" class="absolute left-1.5 bottom-1.5 h-6 px-2 rounded-full bg-black/50 text-white text-[10px] font-bold flex items-center" title="切換大小">
+                                                    <i class="fa-solid fa-table-cells-large text-[9px] mr-1"></i>{{ jgSizeLabel(imgObj) }}
+                                                </button>
+                                                <span v-if="imgObj.desc" class="absolute right-1.5 bottom-1.5 w-5 h-5 rounded-full bg-black/45 text-white flex items-center justify-center pointer-events-none"><i class="fa-solid fa-camera text-[8px]"></i></span>
                                             </div>
-                                            <textarea v-model="imgObj.desc" rows="2" placeholder="說明／機位" class="w-full bg-white border-t border-slate-100 px-2 py-1.5 text-[11px] outline-none resize-none leading-snug block" @input="$event.target.style.height = 'auto'; $event.target.style.height = $event.target.scrollHeight + 'px'"></textarea>
                                         </div>
                                     </div>
-                                    <p class="text-[10px] font-bold text-slate-400 px-0.5">點照片可放大看全圖；☆ 設為卡片封面</p>
+                                    <p class="text-[10px] font-bold text-slate-400 px-0.5 leading-relaxed">長按照片拖曳排序・左下角切換大小（自動／方／寬／直／大）・點照片看原圖並寫說明或機位・☆ 設為卡片封面</p>
                                 </div>
                                 <label v-else class="w-full h-24 border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center text-slate-400 cursor-pointer">
                                     <i class="fa-regular fa-image text-xl mb-1"></i>
@@ -2349,7 +2368,7 @@
                                     <input type="text" v-model.trim="tripInfo.aiApiKey" placeholder="AIza…（有填就直接用這把，不經過 AI Logic）" autocomplete="off" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2 text-[12px] font-sans outline-none">
                                     <p v-if="!sync.enabled && !tripInfo.aiApiKey" class="text-[11px] font-bold text-[#9E0E26] mt-2">要先開啟上面的「雲端同步」，或填入 Gemini API 金鑰</p>
                                     <p v-else class="text-[10px] font-bold text-slate-400 mt-2">金鑰會同步給旅伴，旅伴不用再設定。</p>
-                                    <p class="text-[10px] font-bold text-slate-300 mt-1 font-sans">App 版本 43</p>
+                                    <p class="text-[10px] font-bold text-slate-300 mt-1 font-sans">App 版本 44</p>
                                 </div>
                             </div>
 
@@ -3028,7 +3047,7 @@
                     },
                     saveTimeout: null, isStateLoaded: false,
                     sortableInstances: {},
-                    isDraggingSpot: false, justDraggedSpot: false, typingTodo: false, lightbox: { open: false, list: [], idx: 0 }, openRc: {}, photoSync: { busy: false, error: '', lastMsg: '' }, receipt: { open: false, phase: '', target: 'new', img: '', b64: '', error: '', errorDetail: '', split: false, splitWith: [], splitMode: 'even', splitAmounts: {}, data: null, amount: '', dayIdx: 0, spotIdx: -1, mode: 'new', category: '', payer: '', method: '信用卡', zoom: false }, swipe: { id: null, open: null, offset: 0, active: false }, undoDelete: null, justSwiped: false,
+                    isDraggingSpot: false, justDraggedSpot: false, typingTodo: false, lightbox: { open: false, list: [], idx: 0, editable: false }, imgRatios: {}, tipsEditing: false, tipsDraft: '', openRc: {}, photoSync: { busy: false, error: '', lastMsg: '' }, receipt: { open: false, phase: '', target: 'new', img: '', b64: '', error: '', errorDetail: '', split: false, splitWith: [], splitMode: 'even', splitAmounts: {}, data: null, amount: '', dayIdx: 0, spotIdx: -1, mode: 'new', category: '', payer: '', method: '信用卡', zoom: false }, swipe: { id: null, open: null, offset: 0, active: false }, undoDelete: null, justSwiped: false,
                     showExpenseDetail: false, expenseDetailKey: '',
                     showSwapModal: false, toastMsg: '', showSettleDetail: false, airlineGroups: AIRLINE_GROUPS, photoDrag: { obj: null },
                     sync: { enabled: false, config: null, code: '', status: 'off', lastAt: 0, error: '', deviceId: '', joining: false }, syncConfigText: '', syncInviteText: '', isApplyingRemote: false,
@@ -3318,6 +3337,8 @@
                 appState() { this.autoSave(); },
                 isGenerated() { this.autoSave(); },
                 
+                spotModalMode(v) { if (v !== 'view') this.$nextTick(() => this.initSortableGallery()); },
+                'selectedSpot.images.length'() { if (this.showSpotModal && this.spotModalMode !== 'view') this.$nextTick(() => this.initSortableGallery()); },
                 showSpotModal(v) { if (!v && _syncPendingRemote) setTimeout(() => { if (_syncPendingRemote) this.receiveRemote(_syncPendingRemote); }, 300); },
                 isDraggingSpot(v) { if (!v && _syncPendingRemote) setTimeout(() => { if (_syncPendingRemote) this.receiveRemote(_syncPendingRemote); }, 300); },
                 'selectedSpot.type': function(n) {
@@ -3356,7 +3377,7 @@
                     }
                 },
                 activeDay() {
-                    this.closeSwipe();
+                    this.closeSwipe(); this.tipsEditing = false;
                     if (this.currentTab === 'itinerary') this.$nextTick(() => { this.initSortableItinerary(); });
                 },
                 currentDaySpotCount(newVal, oldVal) {
@@ -3924,10 +3945,19 @@
                     }
                 },
 
+                editDayTips() { this.tipsDraft = this.itinerary[this.activeDay].tips || ''; this.tipsEditing = true; },
+                saveDayTips() { this.itinerary[this.activeDay].tips = (this.tipsDraft || '').trim(); this.tipsEditing = false; },
+                linkifyTips(text) {
+                    const esc = this.escapeHtml(text || '');
+                    return esc.replace(/(https?:\/\/[^\s<]+)/g, (u) => {
+                        let label = u; try { const x = new URL(u.replace(/&amp;/g, '&')); label = x.hostname.replace(/^www\./, '') + (x.pathname.length > 1 ? x.pathname.slice(0, 18) + (x.pathname.length > 18 ? '…' : '') : ''); } catch (e) {}
+                        return `<a href="${u}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${label}</a>`;
+                    });
+                },
                 swapDays(a, b) {
                     if (a === b || !this.itinerary[a] || !this.itinerary[b]) return;
                     const A = this.itinerary[a], B = this.itinerary[b];
-                    const keys = ['hero', 'spots', 'customSorted'];
+                    const keys = ['hero', 'spots', 'customSorted', 'tips'];
                     keys.forEach(k => { const tmp = A[k]; A[k] = B[k]; B[k] = tmp; });
                     this.showSwapModal = false;
                     this.$nextTick(() => { this.initSortableItinerary(); });
@@ -4642,7 +4672,7 @@
                     if (!b.days.length && !Object.keys(doc.items || {}).length) return;
                     this.isApplyingRemote = true;
                     if (b.tripInfo) { this.tripInfo = Object.assign({}, this.tripInfo, b.tripInfo); this.migrateFlights(); }
-                    const plan = { newDates: b.days.map(d => d.rawDate), result: b.days.map(d => Object.assign(this.makeEmptyDay(), { hero: d.hero || this.makeEmptyDay().hero, customSorted: d.customSorted, spots: d.spots })) };
+                    const plan = { newDates: b.days.map(d => d.rawDate), result: b.days.map(d => Object.assign(this.makeEmptyDay(), { hero: d.hero || this.makeEmptyDay().hero, customSorted: d.customSorted, tips: d.tips || '', spots: d.spots })) };
                     if (plan.result.length) this.applyItineraryPlan(plan);
                     if (b.lists) {
                         ['customPayers', 'customCostCategories', 'customPaymentMethods', 'customTransits'].forEach(k => { if (Array.isArray(b.lists[k])) this[k] = b.lists[k]; });
@@ -6040,15 +6070,62 @@
                     d.obj[d.key || 'pos'] = Math.round(Math.max(0, Math.min(100, d.start - dy / d.overflow * 100)));
                 },
                 endPhotoDrag() { this.photoDrag = { obj: null }; },
-                openLightbox(list, idx) {
+                openLightbox(list, idx, editable) {
                     const arr = (list || []).map(i => typeof i === 'string' ? { url: i, desc: '' } : i).filter(Boolean);
                     if (!arr.length) return;
-                    this.lightbox = { open: true, list: arr, idx: idx || 0 };
+                    this.lightbox = { open: true, list: arr, idx: idx || 0, editable: !!editable };
                     this.$nextTick(() => { const el = this.$refs.lbScroll; if (el) el.scrollLeft = el.clientWidth * (idx || 0); });
                 },
                 onLightboxScroll(e) {
                     const el = e.target;
                     this.lightbox.idx = Math.max(0, Math.min(this.lightbox.list.length - 1, Math.round(el.scrollLeft / el.clientWidth)));
+                },
+                // --- 照片日誌格狀：每張大小 s 方、w 寬、t 直、l 大；空白＝自動 ---
+                imgKey(img) { return (img && (img.pid || String(img.url || '').slice(-40))) || ''; },
+                noteRatio(img, e) {
+                    const el = e.target, k = this.imgKey(img);
+                    if (k && el.naturalWidth && !this.imgRatios[k]) this.imgRatios = { ...this.imgRatios, [k]: el.naturalWidth / el.naturalHeight };
+                },
+                jgSize(list, idx) {
+                    const img = list[idx] || {};
+                    if (img.lay && ['s', 'w', 't', 'l'].includes(img.lay)) return img.lay;
+                    const n = list.length;
+                    if (idx === 0) return 'l';
+                    if (n === 2) return 't';
+                    // 前 3 張剛好排滿 3×2；後面每列 3 格，最後不足一列時拉長補滿
+                    if (idx >= 3) {
+                        const rest = n - 3, pos = idx - 3, rem = rest % 3;
+                        if (rem === 1 && pos === rest - 1) return 'f';
+                        if (rem === 2 && pos === rest - 1) return 'w';
+                    }
+                    return 's';
+                },
+                jgSizeLabel(img) { return ({ s: '方', w: '寬', t: '直', l: '大' })[img.lay] || '自動'; },
+                cycleImgSize(img) {
+                    const order = ['', 's', 'w', 't', 'l'];
+                    img.lay = order[(order.indexOf(img.lay || '') + 1) % order.length];
+                },
+                initSortableGallery() {
+                    try {
+                        if (this.sortableInstances['gallery']) { this.sortableInstances['gallery'].destroy(); this.sortableInstances['gallery'] = null; }
+                        const el = document.getElementById('edit-jgrid');
+                        if (!el || !window.Sortable) return;
+                        this.sortableInstances['gallery'] = new Sortable(el, {
+                            draggable: '.jg-tile', animation: 160, delay: 250, delayOnTouchOnly: true, touchStartThreshold: 6,
+                            forceFallback: true, fallbackOnBody: true, ghostClass: 'sortable-ghost',
+                            filter: 'button', preventOnFilter: false,
+                            onEnd: (evt) => {
+                                const o = evt.oldDraggableIndex, n = evt.newDraggableIndex;
+                                if (o == null || n == null || o === n) return;
+                                const { item, from } = evt;
+                                from.removeChild(item);
+                                const sib = Array.from(from.children).filter(x => x.classList.contains('jg-tile'));
+                                if (sib[o]) from.insertBefore(item, sib[o]); else if (sib.length) sib[sib.length - 1].after(item); else from.appendChild(item);
+                                const imgs = this.selectedSpot.images;
+                                imgs.splice(n, 0, imgs.splice(o, 1)[0]);
+                            }
+                        });
+                    } catch (e) { console.warn('gallery sortable', e); }
                 },
                 isCoverImage(imgObj) { return !!this.selectedSpot.coverImage && this.selectedSpot.coverImage === (imgObj.url || imgObj); },
                 setCoverImage(imgObj) {
@@ -6419,7 +6496,7 @@
             Object.keys(sp).forEach(k => { if (!SYNC_MEDIA_KEYS.includes(k) && k !== '_u') o[k] = sp[k]; });
             // 照片：只同步「編號＋位置＋說明」，照片本身另外存（每張一筆）
             const imgs = (sp.images || []).filter(i => i && typeof i === 'object' && i.pid);
-            o.images = imgs.map(i => ({ pid: i.pid, pos: i.pos == null ? 50 : Number(i.pos), desc: i.desc || '' }));
+            o.images = imgs.map(i => ({ pid: i.pid, pos: i.pos == null ? 50 : Number(i.pos), desc: i.desc || '', lay: i.lay || '' }));
             const cov = imgs.find(i => i.url && i.url === sp.coverImage);
             o.coverPid = cov ? cov.pid : (sp.coverPid || '');
             // 附件：只同步「編號＋檔名＋分幾塊」，檔案內容另外分塊存
@@ -6447,7 +6524,7 @@
                 const key = day.rawDate || day.label;
                 const hero = day.hero ? Object.assign({}, day.hero) : null;
                 if (hero && /^data:/.test(hero.image || '')) hero.image = '';   // 照片本身另外存（photos/編號），這裡只同步編號
-                items['day:' + key] = JSON.stringify({ hero, customSorted: !!day.customSorted, order: (day.spots || []).map(s => s.id) });
+                items['day:' + key] = JSON.stringify({ hero, customSorted: !!day.customSorted, tips: day.tips || '', order: (day.spots || []).map(s => s.id) });
                 (day.spots || []).forEach(sp => { if (sp.id) items['spot:' + sp.id] = JSON.stringify(Object.assign(syncStripSpot(sp), { __day: key })); });
             });
             (st.todoCategories || []).forEach(c => {
@@ -6505,7 +6582,7 @@
                 }
                 if (remoteImgs) {
                     // 照片清單以雲端為準；照片檔案用這台手機已有的，沒有的稍後下載
-                    sp.images = remoteImgs.map(r => ({ pid: r.pid, pos: r.pos, desc: r.desc || '', url: photoUrl[r.pid] || '' }));
+                    sp.images = remoteImgs.map(r => ({ pid: r.pid, pos: r.pos, desc: r.desc || '', lay: r.lay || '', url: photoUrl[r.pid] || '' }));
                     const cov = sp.images.find(i => i.pid === sp.coverPid);
                     sp.coverImage = cov && cov.url ? cov.url : (sp.images.length && sp.images[0].url ? sp.images[0].url : '');
                     if (cov) sp.coverPosition = cov.pos;
@@ -6529,7 +6606,7 @@
                     if (ia >= 0) return -1; if (ib >= 0) return 1;
                     return String(a.startTime || '99').localeCompare(String(b.startTime || '99'));
                 });
-                return { rawDate: key, hero: meta.hero, customSorted: !!meta.customSorted, spots: list };
+                return { rawDate: key, hero: meta.hero, customSorted: !!meta.customSorted, tips: meta.tips || '', spots: list };
             });
             const todoOrder = get('todoOrder') || [];
             const todos = Object.keys(items).filter(k => k.startsWith('todo:')).map(k => get(k)).filter(Boolean);
